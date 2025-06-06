@@ -1,0 +1,24 @@
+[project]
+name = "graincounting"
+version = "0.1.0"
+description = "A keypoint-based deep learning model is trained to detect and classify individual spikelets as filled or unfilled"
+readme = "README.md"
+requires-python = "==3.11.12"
+dependencies = [
+    "hdf5storage>=0.2.0",
+    "ipykernel>=6.29.5",
+    "matplotlib>=3.10.3",
+    "networkx>=3.5",
+    "opencv-python>=4.11.0.86",
+    "pillow==9.5.0",
+    "scikit-image>=0.24.0",
+    "tensorboardx>=2.6.2.2",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "tqdm>=4.67.1",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
