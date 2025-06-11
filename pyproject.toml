@@ -11,6 +11,7 @@ dependencies = [
     "networkx>=3.5",
     "opencv-python>=4.11.0.86",
     "pillow==9.5.0",
+    "pytest>=8.4.0",
     "scikit-image>=0.24.0",
     "tensorboardx>=2.6.2.2",
     "torch==2.6.0",
