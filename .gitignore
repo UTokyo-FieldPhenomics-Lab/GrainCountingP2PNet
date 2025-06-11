@@ -2,8 +2,8 @@
 /main.py
 **/outputs
 /data
-models/best_mae.pth
-models/latest.pth
+weights/best_mae.pth
+weights/latest.pth
+weights/official_best_mae.pth
 experiments/configs/train_args.txt
-models/official_best_mae.pth
 __pycache__
