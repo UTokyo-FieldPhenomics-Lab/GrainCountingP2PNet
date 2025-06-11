@@ -1,4 +1,4 @@
-# GrainCountingNet: An RGB image-based phenotyping system for assessing spikelet fertility in rice panicles
+# GrainCountingP2PNet: An RGB image-based phenotyping system for assessing spikelet fertility in rice panicles
 
 \[link to paper \]
 
