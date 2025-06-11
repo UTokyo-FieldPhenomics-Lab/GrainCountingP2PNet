@@ -6,3 +6,4 @@ models/best_mae.pth
 models/latest.pth
 experiments/configs/train_args.txt
 models/official_best_mae.pth
+__pycache__
