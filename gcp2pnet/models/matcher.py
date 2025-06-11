@@ -1,6 +1,6 @@
-
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 """
+Modified from https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/main/models/matcher.py
 Mostly copy-paste from DETR (https://github.com/facebookresearch/detr).
 """
 import torch
@@ -71,13 +71,16 @@ class HungarianMatcher_Crowd(nn.Module):
         # Compute the giou cost between point
 
         # Final cost matrix
+        if cost_class.dim() == 3:
+            cost_class = torch.squeeze(cost_class, 2)
+
         C = self.cost_point * cost_point + self.cost_class * cost_class
         C = C.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v["point"]) for v in targets]
         indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
-        return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
 
+        return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
 
 def build_matcher_crowd(args):
     return HungarianMatcher_Crowd(cost_class=args.set_cost_class, cost_point=args.set_cost_point)
