@@ -1,14 +1,17 @@
 # this code is partly modified from 
 # https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/main/crowd_datasets/
 
+import json
 import random
+from pathlib import Path
+
+import cv2
 import torch
 import numpy as np
+from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as standard_transforms
-from PIL import Image
-import cv2
-from pathlib import Path
+
 
 class SHHADataset(Dataset):
 
@@ -191,6 +194,19 @@ def loading_dataset(dataset_root):
 
     return train_set, valid_set
 
+
+def loading_label_dict(dataset_root):
+
+    dataset_root = Path(dataset_root)
+
+    label_json_file = dataset_root / "classes.json"
+
+    with open(label_json_file, 'r', encoding='utf-8') as f:
+        label_dict = json.load(f)
+
+    class_n = len ( np.unique( np.asarray( list(label_dict.values() ) ) ) )
+
+    return label_dict, class_n
 
 # self defined functions to process v7labs annotation data
 # todo
