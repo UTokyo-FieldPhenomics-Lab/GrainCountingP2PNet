@@ -56,7 +56,29 @@ To be continued
 
 ### Training 
 
-To be continued
+```bash
+...GrainCountingNet > uv run -m gcp2pnet.train \
+    --dataset_folder ./data/dataset \
+    --batch_size 1 \
+    --epochs 100 \ 
+    --run_name demo_train \
+    ...
+```
+
+After training, using the following command to check the results figure by tensorboard:
+
+```bash
+...GrainCountingNet > uv run tensorboard --logdir ./runs/<run_name>/tensorboard_logs --port 8123
+
+NOTE: Using experimental fast data loading logic. To disable, pass
+    "--load_fast=false" and report issues on GitHub. More details:
+    https://github.com/tensorflow/tensorboard/issues/4784
+
+Serving TensorBoard on localhost; to expose to the network, use a proxy or pass --bind_all
+TensorBoard 2.19.0 at http://localhost:8123/ (Press CTRL+C to quit)
+```
+
+Then press `ctrl` + left click to open the `localhost;8123` to check in browser.
 
 **Train on your own data**
 
