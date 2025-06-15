@@ -7,3 +7,4 @@ weights/latest.pth
 weights/official_best_mae.pth
 experiments/configs/train_args.txt
 __pycache__
+/runs
