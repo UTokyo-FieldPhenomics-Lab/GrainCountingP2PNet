@@ -59,7 +59,7 @@ To be continued
 ```bash
 ...GrainCountingNet > uv run -m gcp2pnet.train \
     --dataset_folder ./data/dataset \
-    --batch_size 1 \
+    --batch_size 1 \  # due to multi-class, currently only batch_size=1 is supported.
     --epochs 100 \ 
     --run_name demo_train \
     ...
