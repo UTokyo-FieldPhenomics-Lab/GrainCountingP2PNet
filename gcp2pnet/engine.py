@@ -125,7 +125,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 # the inference routine
 @torch.no_grad()
-def evaluate_crowd_no_overlap(model, data_loader, device, label_type_count, threshold=0.5, vis_dir=None):
+def evaluate_crowd_no_overlap(model, data_loader, device, class_n, threshold=0.5):
     model.eval()
 
     metric_logger = misc.MetricLogger(delimiter="  ")
@@ -158,7 +158,7 @@ def evaluate_crowd_no_overlap(model, data_loader, device, label_type_count, thre
         outputs_points = outputs['pred_points'][0]
 
         outputs_scores = []
-        for i in range(label_type_count - 1):
+        for i in range(class_n):
             outputs_scores.append(torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, i + 1][0])
 
 
@@ -166,7 +166,7 @@ def evaluate_crowd_no_overlap(model, data_loader, device, label_type_count, thre
         points_n_for_all_class = []
         scores_n_for_all_class = []
 
-        for i in range(label_type_count - 1):
+        for i in range(class_n):
 
             points = outputs_points   [outputs_scores[i] > threshold].detach().cpu().numpy()#.tolist()
             scores = outputs_scores[i][outputs_scores[i] > threshold].detach().cpu().numpy()#.tolist()
