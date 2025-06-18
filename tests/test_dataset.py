@@ -1,7 +1,8 @@
 from gcp2pnet.datasets import SHHADataset, loading_dataset, loading_label_dict
+from gcp2pnet.utils import fix_seed
 import torch
 
-dataset_dir = "data/dataset"
+dataset_dir = "data/demo_dataset"
 
 def test_demo_dataset_loading():
     train_set, valid_set = loading_dataset( dataset_dir )
@@ -10,7 +11,7 @@ def test_demo_dataset_loading():
     assert len(valid_set) == 1333
 
     assert train_set[0][0].shape == torch.Size([1, 3, 256, 256])
-
+    assert train_set[0][1][0]['image_path'].stem == train_set[0][1][0]['label_path'].stem
 
 def test_parse_dataset_classes_json():
 

@@ -58,7 +58,7 @@ class SHHADataset(Dataset):
 
         # random crop augumentaiton
         if self.train and self.patch:
-            img, point,labels = self.random_crop_augment(img, point, labels)
+            img, point, labels = self.random_crop_augment(img, point, labels)
 
             for i, _ in enumerate(point):  #03/21 debug
                 point[i] = torch.Tensor(point[i])
@@ -89,15 +89,18 @@ class SHHADataset(Dataset):
                 target[i]['labels'] = torch.Tensor(labels[i]).long()
 
             # image_id_1 = int(image_path.split('/')[-1].split('.')[0][5:7])
-            image_id_1 = int(image_path.name[5:7])
-            image_id_1 = torch.Tensor([image_id_1]).long()
+            # image_id_1 = int(image_path.name[5:7])
+            # image_id_1 = torch.Tensor([image_id_1]).long()
             
             # image_id_2 = int(image_path.split('/')[-1].split('.')[0][5:7])
-            image_id_2 = int(image_path.name[5:7])
-            image_id_2 = torch.Tensor([image_id_2]).long()
+            # image_id_2 = int(image_path.name[5:7])
+            # image_id_2 = torch.Tensor([image_id_2]).long()
 
-            target[i]['image_id_1'] = image_id_1
-            target[i]['image_id_2'] = image_id_2
+            # target[i]['image_id_1'] = image_id_1
+            # target[i]['image_id_2'] = image_id_2
+
+            target[i]['image_path'] = image_path
+            target[i]['label_path'] = label_path
 
         return img, target
     
@@ -164,6 +167,19 @@ def _listdir_all_images(pathlib_folder):
             list(pathlib_folder.glob("*.[pP][nN][gG]")) + \
             list(pathlib_folder.glob("*.[bB][mM][pP]")) + \
             list(pathlib_folder.glob("*.[tT][iI][fF][fF]"))
+
+def _match_image_and_label(img_list, lbl_list):
+    img_list_ordered = []
+    lbl_list_ordered = []
+    img_stems = {img.stem: img for img in img_list}
+    lbl_stems = {lbl.stem: lbl for lbl in lbl_list}
+
+    for stem in img_stems:
+        if stem in lbl_stems:
+            img_list_ordered.append(img_stems[stem])
+            lbl_list_ordered.append(lbl_stems[stem])
+
+    return img_list_ordered, lbl_list_ordered
     
 def loading_dataset(dataset_root):
     dataset_root = Path(dataset_root)
@@ -179,6 +195,9 @@ def loading_dataset(dataset_root):
 
     train_label_list = list(train_label_folder.glob("*.txt"))
     valid_label_list = list(valid_label_folder.glob("*.txt"))
+
+    train_image_list, train_label_list = _match_image_and_label(train_image_list, train_label_list)
+    valid_image_list, valid_label_list = _match_image_and_label(valid_image_list, valid_label_list)
 
     # the pre-proccssing transform
     transform = standard_transforms.Compose([
