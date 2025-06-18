@@ -213,11 +213,10 @@ def main(args):
             if epoch > 0:
                 if np.min(mse) > result[1]:
                 # if abs(np.min(mae) - result[0]) < 0.01:
-                    checkpoint_best_path = best_model_file
                     torch.save({
                         'model': model_without_ddp.state_dict(),
-                    }, checkpoint_best_path)
-                    print("===updated best model===")
+                    }, best_model_file)
+                    print(f"=== updated best model ===\n   -> {best_model_file}")
 
             mae.append(result[0])
             mse.append(result[1])
