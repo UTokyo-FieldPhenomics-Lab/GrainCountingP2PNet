@@ -89,13 +89,15 @@ class SHHADataset(Dataset):
                 target[i]['labels'] = torch.Tensor(labels[i]).long()
 
             # image_id_1 = int(image_path.split('/')[-1].split('.')[0][5:7])
-            # image_id_1 = torch.Tensor([image_id_1]).long()
+            image_id_1 = int(image_path.name[5:7])
+            image_id_1 = torch.Tensor([image_id_1]).long()
             
             # image_id_2 = int(image_path.split('/')[-1].split('.')[0][5:7])
-            # image_id_2 = torch.Tensor([image_id_2]).long()
+            image_id_2 = int(image_path.name[5:7])
+            image_id_2 = torch.Tensor([image_id_2]).long()
 
-            # target[i]['image_id_1'] = image_id_1
-            # target[i]['image_id_2'] = image_id_2
+            target[i]['image_id_1'] = image_id_1
+            target[i]['image_id_2'] = image_id_2
 
         return img, target
     
