@@ -5,11 +5,14 @@ import time
 import yaml
 from pathlib import Path
 
+import warnings
+warnings.filterwarnings('ignore')
+
 import numpy as np
 
 import torch
-from torch.utils.data import DataLoader, DistributedSampler
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
+from tensorboardX import SummaryWriter
 
 from . import models, utils, datasets, misc, engine
 
@@ -23,7 +26,8 @@ def get_train_arguments():
     parser = argparse.ArgumentParser(description="P2PNet training script")
 
     # constant
-    parser.add_argument('--lr', default=1e-3, type=float, help="learning rate for background model") # originall set 1e-3 and can be reduced at later training stage
+    parser.add_argument('--lr', default=1e-3, type=float, # originall set 1e-3 and can be reduced at later training stage
+                        help="learning rate for background model") 
     parser.add_argument('--lr_fpn', default=1e-4, type=float, help="learning rate for detection head")
     parser.add_argument('--batch_size', default=1, type=int)
 
@@ -33,11 +37,12 @@ def get_train_arguments():
     parser.add_argument('--clip_max_norm', default=0.1, type=float, help='gradient clipping max norm')
 
     # Model parameters
-    parser.add_argument('--frozen_weights', type=str, default=None, help="Path to the pretrained model. If set, only the mask head will be trained")
+    parser.add_argument('--frozen_weights', type=str, default=None, 
+                        help="Path to the pretrained model. If set, only the mask head will be trained")
 
     # * Matcher is a Hungarian strategy, minimizing the cost of proposed points and gt points
-    parser.add_argument('--set_cost_class', default=0.5, type=float,
-                        help="Class coefficient in the matching cost") #クラスマッチングの失敗による重みづけ係数
+    parser.add_argument('--set_cost_class', default=0.5, type=float, #クラスマッチングの失敗による重みづけ係数
+                        help="Class coefficient in the matching cost") 
 
     parser.add_argument('--set_cost_point', default=0.5, type=float,
                         help="L1 point coefficient in the matching cost")
@@ -111,7 +116,7 @@ def main(args):
     utils.print_args(args)
     run_log_name =  run_output_dir / 'args.yaml'
     with open(run_log_name, 'w', encoding="utf-8") as f:
-        yaml.dump(vars(args), f)
+        yaml.dump({k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, f)
 
     utils.fix_seed(args.seed)
 
@@ -200,7 +205,7 @@ def main(args):
         # run evaluation
         if epoch % args.eval_freq == 0:
             t1 = time.time()
-            result = engine.evaluate_crowd_no_overlap(model, data_loader_val, device, class_n+1, args.threshold)
+            result = engine.evaluate_crowd_no_overlap(model, data_loader_val, device, class_n, args.threshold)
             t2 = time.time()
 
 
@@ -217,8 +222,8 @@ def main(args):
             mae.append(result[0])
             mse.append(result[1])
 
-            print(mae)
-            print(mse)
+            print("mae list:", np.asarray(mae))
+            print("mse list:", np.asarray(mse))
 
             # print the evaluation results
             print('=======================================test=======================================')
@@ -230,7 +235,6 @@ def main(args):
             if writer is not None:
                 writer.add_scalar('metric/mae', result[0], step)
                 writer.add_scalar('metric/mse', result[1], step)
-
                 step += 1
 
         t1 = time.time()
@@ -252,6 +256,7 @@ def main(args):
         
         # change lr according to the scheduler
         lr_scheduler.step()
+        
         # save latest weights every epoch
         if not os.path.exists(args.checkpoints_dir):
             os.makedirs(args.checkpoints_dir)
