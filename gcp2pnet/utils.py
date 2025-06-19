@@ -27,10 +27,10 @@ def print_args(args):
         print(f"{arg:>20}: {getattr(args, arg)}")
     print("="*120)
 
-def fix_seed(args_seed):
-    # fix the seed for reproducibility
-    seed = args_seed + get_rank()
-    seed = args_seed
+def fix_random_seed(seed):
+    """
+    fix the seed for reproducibility
+    """
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)

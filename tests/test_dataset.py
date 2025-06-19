@@ -1,5 +1,5 @@
 from gcp2pnet.datasets import SHHADataset, loading_dataset, loading_label_dict
-from gcp2pnet.utils import fix_seed
+from gcp2pnet.utils import fix_random_seed
 import torch
 
 dataset_dir = "data/demo_dataset"

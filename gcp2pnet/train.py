@@ -118,7 +118,7 @@ def main(args):
     with open(run_log_name, 'w', encoding="utf-8") as f:
         yaml.dump({k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, f)
 
-    utils.fix_seed(args.seed)
+    utils.fix_random_seed(args.seed)
 
     # get the P2PNet model
     model, criterion = models.p2pnet.build(args, training=True)
