@@ -1,4 +1,4 @@
-from .p2pnet import build
+from .p2pnet import build, P2PNet
 
 # build the P2PNet model
 # set training to 'True' during training
