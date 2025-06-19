@@ -1,10 +1,6 @@
-/.venv
-/main.py
-**/outputs
-/data
-weights/best_mae.pth
-weights/latest.pth
-weights/official_best_mae.pth
-jupyters/train_args.txt
 __pycache__
+/.venv
+/data
 /runs
+**/outputs
+*.pth
