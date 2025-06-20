@@ -95,6 +95,26 @@ def load_image_to_tensor(img_path, device, trimming_size=256):
 
     return img_tensor
 
+def apply_model(model, img_tensor, threshold):
+    class_n = model.num_classes - 1  # num_class = [0, 1, 2] -> [1, 2] are labels -> class_n = 2
+
+    # run inference
+    outputs = model(img_tensor)
+
+    outputs_points = outputs['pred_points'][0]
+    outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)
+
+    raw_results = {}
+    for class_i in range(1, class_n + 1):
+        outputs_score = outputs_scores[:, :, class_i][0]
+
+        points = outputs_points[outputs_score > threshold].detach().cpu().numpy()#.tolist()
+        scores = outputs_score [outputs_score > threshold].detach().cpu().numpy()#.tolist()
+
+        raw_results[class_i] = {'points': points, 'scores': scores}
+
+    return raw_results
+
 
 def main(args, debug=False):
     os.environ["CUDA_VISIBLE_DEVICES"] = '{}'.format(args.gpu_id)
@@ -105,12 +125,9 @@ def main(args, debug=False):
 
     img_tensor = load_image_to_tensor(args.img_path, args.device)
 
-    # run inference
-    outputs = model(img_tensor)
-    outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, 1][0]
+    raw_results = apply_model(model, img_tensor, args.threshold)
 
-    outputs_points = outputs['pred_points'][0]
-
+    
     # work to here
 
     threshold = 0.5

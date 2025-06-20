@@ -5,7 +5,7 @@ import shutil
 import torch
 import pytest
 
-from gcp2pnet.inference import get_inf_arguments, load_model, load_image_to_tensor
+from gcp2pnet.inference import get_inf_arguments, load_model, load_image_to_tensor, apply_model
 
 
 def test_get_inf_arguments():
@@ -42,16 +42,20 @@ def test_load_image_to_tensor():
 
     assert img_tensor.shape == torch.Size([1, 3, 256, 256])
 
-def test_inference_output():
+def test_inference_raw_output():
     args = get_inf_arguments()
 
     args.weight_path = "./demo_best_mae.pth"
     args.img_path = "./data/inference/20220207_17_Y_a_v03_h02.JPG"
 
     # start inferencing
-    model, ckpt = load_model(args)
+    model = load_model(args)
 
     img_tensor = load_image_to_tensor(args.img_path, args.device)
+
+    ################
+    #  source code
+    ################
 
     # run inference
     outputs = model(img_tensor)
@@ -62,8 +66,26 @@ def test_inference_output():
     assert outputs_points.shape == torch.Size([16384, 2])
 
     # model.num_classes = label_class + 1 (0 as background I guess)
-    assert outputs['pred_logits'].shape == torch.Size([1, 16384, 3])  
+    assert outputs['pred_logits'].shape == torch.Size([1, 16384, 3]) 
 
+    # iter each class
+    test_class = i = 1
+    ### for i in range(label_type_count -1)
+    outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, i][0]
 
-    # outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, 1][0]
+    points = outputs_points[outputs_scores > args.threshold].detach().cpu().numpy()#.tolist()
+    scores = outputs_scores[outputs_scores > args.threshold].detach().cpu().numpy()#.tolist()
+
+    assert points.shape == (78,2)
+    assert scores.shape == (78,)
+
+    ################
+    # packed func
+    ################
+
+    raw_results = apply_model(model, img_tensor, args.threshold)
+
+    assert raw_results[1]['points'].shape == (78, 2)
+    assert raw_results[1]['scores'].shape == (78,)
+
 
