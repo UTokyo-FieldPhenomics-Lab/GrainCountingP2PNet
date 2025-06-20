@@ -103,7 +103,7 @@ def main(args, debug=False):
 
     model = load_model(args)
 
-    img_tensor = load_image_to_tensor(args.image, args.device)
+    img_tensor = load_image_to_tensor(args.img_path, args.device)
 
     # run inference
     outputs = model(img_tensor)

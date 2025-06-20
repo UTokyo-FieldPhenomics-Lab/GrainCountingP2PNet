@@ -41,3 +41,29 @@ def test_load_image_to_tensor():
     img_tensor = load_image_to_tensor(img_path, args.device)
 
     assert img_tensor.shape == torch.Size([1, 3, 256, 256])
+
+def test_inference_output():
+    args = get_inf_arguments()
+
+    args.weight_path = "./demo_best_mae.pth"
+    args.img_path = "./data/inference/20220207_17_Y_a_v03_h02.JPG"
+
+    # start inferencing
+    model, ckpt = load_model(args)
+
+    img_tensor = load_image_to_tensor(args.img_path, args.device)
+
+    # run inference
+    outputs = model(img_tensor)
+
+    # question here: why 16384=128*128 not 256*256?
+    assert outputs['pred_points'].shape == torch.Size([1, 16384, 2])
+    outputs_points = outputs['pred_points'][0]
+    assert outputs_points.shape == torch.Size([16384, 2])
+
+    # model.num_classes = label_class + 1 (0 as background I guess)
+    assert outputs['pred_logits'].shape == torch.Size([1, 16384, 3])  
+
+
+    # outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, 1][0]
+
