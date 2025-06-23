@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from gcp2pnet.inference import (
     get_inf_arguments, load_model, 
     load_image_to_tensor, apply_model,
-    postprocess_point_clusters,
+    postprocess_point_clusters_one_class, postprocess_point_clusters
 )
 
 
@@ -112,13 +112,9 @@ def test_inference_post_processing(setup_inference):
 
     raw_results = apply_model(model, img_tensor, args.threshold)
 
-    fig, ax = plt.subplots(1,1)
-    ax.imshow(img_numpy)
-
-    colors = {1: 'r', 2: 'b'}
-
+    # sub function 
     for key in raw_results.keys():
-        points_n, scores_n = postprocess_point_clusters(
+        points_n, scores_n = postprocess_point_clusters_one_class(
             raw_results[key]['points'],
             raw_results[key]['scores']
         )
@@ -126,7 +122,17 @@ def test_inference_post_processing(setup_inference):
         assert points_n.shape == (6,2)
         assert scores_n.shape == (6,)
 
-        ax.scatter(*points_n.T, c=colors[key], s=10)
+    # merged function
+    results_pd = postprocess_point_clusters(raw_results)
+
+    assert len(results_pd) == 12
+
+    fig, ax = plt.subplots(1,1)
+    ax.imshow(img_numpy)
+
+    c = {1: 'r', 2: 'b'}
+    class_color = [c[i] for i in results_pd['class']]
+    ax.scatter(results_pd.x, results_pd.y, c=class_color, s=10)
 
     plt.savefig("tests/outputs/test_inference_post_processing.png")
 

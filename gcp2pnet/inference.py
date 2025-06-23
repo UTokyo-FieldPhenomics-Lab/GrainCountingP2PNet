@@ -13,6 +13,7 @@ import torch
 import torchvision.transforms as standard_transforms
 import numpy as np
 import networkx as nx
+import pandas as pd
 
 from PIL import Image
 from scipy import spatial
@@ -117,7 +118,7 @@ def apply_model(model, img_tensor, threshold):
 
     return raw_results
 
-def postprocess_point_clusters(points, scores):
+def postprocess_point_clusters_one_class(points, scores):
     if points.shape[0] > 10000:
         warnings.warn('Too many points, skip post processing')
         return points, scores
@@ -165,6 +166,29 @@ def postprocess_point_clusters(points, scores):
 
     return np.asarray(points_n), np.asarray(scores_n)
 
+def postprocess_point_clusters(raw_dict):
+    results = pd.DataFrame(columns=['x', 'y', 'score', 'class'])
+    for key in raw_dict.keys():
+        points_n, scores_n = postprocess_point_clusters_one_class(
+            raw_dict[key]['points'],
+            raw_dict[key]['scores']
+        )
+
+        class_n = [key] * len(points_n)
+
+        tmp_df = pd.DataFrame({
+            'x': points_n[:, 0],
+            'y': points_n[:, 1],
+            'score': scores_n,
+            'class': class_n
+        })
+        results = pd.concat([results, tmp_df], ignore_index=True)
+
+    return results
+
+def postprocess_merge_by_distance(prox_distance=25):
+    pass
+
 
 def main(args, debug=False):
     os.environ["CUDA_VISIBLE_DEVICES"] = '{}'.format(args.gpu_id)
@@ -176,6 +200,8 @@ def main(args, debug=False):
     img_numpy, img_tensor = load_image_to_tensor(args.img_path, args.device)
 
     raw_results = apply_model(model, img_tensor, args.threshold)
+
+    clustered_pd = postprocess_point_clusters(raw_results)
 
     
     # work to here
