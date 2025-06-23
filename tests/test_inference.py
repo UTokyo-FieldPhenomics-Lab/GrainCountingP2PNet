@@ -58,12 +58,12 @@ def setup_inference():
     # start inferencing
     model = load_model(args)
 
-    img_tensor = load_image_to_tensor(args.img_path, args.device)
+    img_numpy, img_tensor = load_image_to_tensor(args.img_path, args.device)
 
-    return args, model, img_tensor
+    return args, model, img_numpy, img_tensor
 
 def test_inference_raw_output(setup_inference):
-    args, model, img_tensor = setup_inference
+    args, model, img_numpy, img_tensor = setup_inference
 
     ################
     #  source code
@@ -100,11 +100,22 @@ def test_inference_raw_output(setup_inference):
     assert raw_results[1]['points'].shape == (78, 2)
     assert raw_results[1]['scores'].shape == (78,)
 
+    fig, ax = plt.subplots(1,1)
+    ax.imshow(img_numpy)
+    ax.scatter(*raw_results[1]['points'].T, c='r', s=1)
+    ax.scatter(*raw_results[2]['points'].T, c='b', s=1)
+    plt.savefig("tests/outputs/test_inference_raw_output.png")
+
 def test_inference_post_processing(setup_inference):
 
-    args, model, img_tensor = setup_inference
+    args, model, img_numpy, img_tensor = setup_inference
 
     raw_results = apply_model(model, img_tensor, args.threshold)
+
+    fig, ax = plt.subplots(1,1)
+    ax.imshow(img_numpy)
+
+    colors = {1: 'r', 2: 'b'}
 
     for key in raw_results.keys():
         points_n, scores_n = postprocess_point_clusters(
@@ -114,4 +125,8 @@ def test_inference_post_processing(setup_inference):
 
         assert points_n.shape == (6,2)
         assert scores_n.shape == (6,)
+
+        ax.scatter(*points_n.T, c=colors[key], s=10)
+
+    plt.savefig("tests/outputs/test_inference_post_processing.png")
 

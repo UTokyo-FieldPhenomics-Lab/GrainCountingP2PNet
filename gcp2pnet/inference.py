@@ -95,7 +95,7 @@ def load_image_to_tensor(img_path, device, trimming_size=256):
     img_tensor = torch.Tensor(img_trans).unsqueeze(0)
     img_tensor = img_tensor.to(device)
 
-    return img_tensor
+    return img_resize, img_tensor
 
 def apply_model(model, img_tensor, threshold):
     class_n = model.num_classes - 1  # num_class = [0, 1, 2] -> [1, 2] are labels -> class_n = 2
@@ -173,7 +173,7 @@ def main(args, debug=False):
 
     model = load_model(args)
 
-    img_tensor = load_image_to_tensor(args.img_path, args.device)
+    img_numpy, img_tensor = load_image_to_tensor(args.img_path, args.device)
 
     raw_results = apply_model(model, img_tensor, args.threshold)
 
