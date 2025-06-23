@@ -5,7 +5,13 @@ import shutil
 import torch
 import pytest
 
-from gcp2pnet.inference import get_inf_arguments, load_model, load_image_to_tensor, apply_model
+import matplotlib.pyplot as plt
+
+from gcp2pnet.inference import (
+    get_inf_arguments, load_model, 
+    load_image_to_tensor, apply_model,
+    postprocess_point_clusters,
+)
 
 
 def test_get_inf_arguments():
@@ -42,7 +48,8 @@ def test_load_image_to_tensor():
 
     assert img_tensor.shape == torch.Size([1, 3, 256, 256])
 
-def test_inference_raw_output():
+@pytest.fixture
+def setup_inference():
     args = get_inf_arguments()
 
     args.weight_path = "./demo_best_mae.pth"
@@ -52,6 +59,11 @@ def test_inference_raw_output():
     model = load_model(args)
 
     img_tensor = load_image_to_tensor(args.img_path, args.device)
+
+    return args, model, img_tensor
+
+def test_inference_raw_output(setup_inference):
+    args, model, img_tensor = setup_inference
 
     ################
     #  source code
@@ -88,4 +100,18 @@ def test_inference_raw_output():
     assert raw_results[1]['points'].shape == (78, 2)
     assert raw_results[1]['scores'].shape == (78,)
 
+def test_inference_post_processing(setup_inference):
+
+    args, model, img_tensor = setup_inference
+
+    raw_results = apply_model(model, img_tensor, args.threshold)
+
+    for key in raw_results.keys():
+        points_n, scores_n = postprocess_point_clusters(
+            raw_results[key]['points'],
+            raw_results[key]['scores']
+        )
+
+        assert points_n.shape == (6,2)
+        assert scores_n.shape == (6,)
 

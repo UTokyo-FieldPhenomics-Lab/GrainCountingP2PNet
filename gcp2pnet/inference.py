@@ -12,8 +12,10 @@ import cv2
 import torch
 import torchvision.transforms as standard_transforms
 import numpy as np
+import networkx as nx
 
 from PIL import Image
+from scipy import spatial
 
 from . import models, utils, engine
 
@@ -114,6 +116,54 @@ def apply_model(model, img_tensor, threshold):
         raw_results[class_i] = {'points': points, 'scores': scores}
 
     return raw_results
+
+def postprocess_point_clusters(points, scores):
+    if points.shape[0] > 10000:
+        warnings.warn('Too many points, skip post processing')
+        return points, scores
+    
+    if points.shape[0] == 0:
+        warnings.warn('No points, skip post processing')
+        return points, scores
+    
+    cutoff = 500 / points.shape[0]
+    if cutoff < 20:
+        cutoff = 20
+
+    components = nx.connected_components(
+        nx.from_edgelist(
+            (i, j) for i, js in enumerate(
+                spatial.KDTree(points).query_ball_point(points, cutoff)
+            )
+            for j in js
+        )
+    )
+
+    clusters = {j: i for i, js in enumerate(components) for j in js}
+
+    # reorganize the points to the order of clusters
+    points_reo = np.zeros(points.shape)
+    scores_reo = np.zeros(scores.shape)
+
+    for i, key in enumerate( clusters.keys() ):
+        points_reo[i,:] = points[key,:]
+        scores_reo[i] = scores[key]
+
+    # points_n has the same order as clusters
+    res = [clusters[key] for key in clusters.keys()]
+    res_n = np.array(res).reshape(-1,1)
+
+    points_n = []
+    scores_n = []
+    for i in np.unique(res_n):
+
+        tmp_points = points_reo[np.where(res_n[:,0] == i)]
+        tmp_scores = scores_reo[np.where(res_n[:,0] == i)]
+
+        points_n.append( [np.mean(tmp_points[:,0]), np.mean(tmp_points[:,1])])
+        scores_n.append( np.mean(tmp_scores[:]) )
+
+    return np.asarray(points_n), np.asarray(scores_n)
 
 
 def main(args, debug=False):
