@@ -180,14 +180,30 @@ def postprocess_point_clusters(raw_dict):
             'x': points_n[:, 0],
             'y': points_n[:, 1],
             'score': scores_n,
-            'class': class_n
+            'cls': class_n
         })
         results = pd.concat([results, tmp_df], ignore_index=True)
 
     return results
 
-def postprocess_merge_by_distance(prox_distance=25):
-    pass
+def postprocess_merge_by_distance(results_df, prox_distance=25):
+
+    # Build a KDTree for efficient spatial queries
+    points = results_df[['x', 'y']].values
+    tree = spatial.KDTree(points)
+
+    # Find all points within `distance` of each point
+    to_keep = []
+    for idx, row in results_df.iterrows():
+        neighbors = tree.query_ball_point([row['x'], row['y']], prox_distance)
+        neighbor_scores = results_df.iloc[neighbors]['score']
+        highest_score_idx = neighbor_scores.idxmax()
+        to_keep.append(highest_score_idx)
+
+    # Deduplicate and keep only the highest-scoring points in each neighborhood
+    filtered_df = results_df.loc[list(set(to_keep))].sort_index()
+
+    return filtered_df
 
 
 def main(args, debug=False):

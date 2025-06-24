@@ -6,11 +6,14 @@ import torch
 import pytest
 
 import matplotlib.pyplot as plt
+from matplotlib import patheffects
+from adjustText import adjust_text
 
 from gcp2pnet.inference import (
     get_inf_arguments, load_model, 
     load_image_to_tensor, apply_model,
-    postprocess_point_clusters_one_class, postprocess_point_clusters
+    postprocess_point_clusters_one_class, postprocess_point_clusters,
+    postprocess_merge_by_distance
 )
 
 
@@ -127,12 +130,51 @@ def test_inference_post_processing(setup_inference):
 
     assert len(results_pd) == 12
 
+    ###############
+    # draw figures
+    ###############
     fig, ax = plt.subplots(1,1)
     ax.imshow(img_numpy)
 
     c = {1: 'r', 2: 'b'}
-    class_color = [c[i] for i in results_pd['class']]
-    ax.scatter(results_pd.x, results_pd.y, c=class_color, s=10)
+    class_color = [c[i] for i in results_pd.cls]
+    ax.scatter(results_pd.x, results_pd.y, c=class_color, s=15, marker='o', edgecolors='w')
 
-    plt.savefig("tests/outputs/test_inference_post_processing.png")
+    texts = []
+    for x, y, score, cls in zip(results_pd.x, results_pd.y, results_pd.score, results_pd.cls):
+        texts.append(
+            ax.text(x, y, f"{score:.2f}", ha='center', va='bottom', 
+                    fontsize=10, color=c[cls], alpha=0.7,
+                    path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
+        )
 
+    adjust_text(texts, force_text=0.1, arrowprops=dict(arrowstyle="-|>",
+                                                    color='w', alpha=0.8))
+
+    plt.savefig("tests/outputs/test_inference_postprocess_point_clusters.png")
+
+def test_inference_postprocess_merge_by_distance(setup_inference):
+    args, model, img_numpy, img_tensor = setup_inference
+    raw_results = apply_model(model, img_tensor, args.threshold)
+
+    results_df = postprocess_point_clusters(raw_results)
+
+    filtered_df = postprocess_merge_by_distance(results_df, prox_distance=25)
+
+    ###############
+    # draw figures
+    ###############
+
+    fig, ax = plt.subplots(1,1)
+    ax.imshow(img_numpy)
+
+    c = {1: 'r', 2: 'b'}
+    class_color = [c[i] for i in filtered_df.cls]
+    ax.scatter(filtered_df.x, filtered_df.y, c=class_color, s=15, marker='o', edgecolors='w')
+
+    for x, y, score, cls in zip(filtered_df.x, filtered_df.y, filtered_df.score, filtered_df.cls):
+        ax.text(x, y-5, f"{score:.2f}", ha='center', va='bottom', 
+                fontsize=10, color=c[cls], alpha=0.7,
+                path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
+
+    plt.savefig("tests/outputs/test_inference_postprocess_merge_by_distance.png")
