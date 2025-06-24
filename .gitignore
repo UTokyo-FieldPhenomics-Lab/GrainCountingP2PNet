@@ -1,6 +1,8 @@
 __pycache__
 /.venv
-/data
+/data/demo_dataset
+/data/*.zip
+/data/inference
 /runs
 **/outputs
 *.pth

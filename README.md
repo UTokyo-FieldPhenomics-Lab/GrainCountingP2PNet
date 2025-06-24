@@ -89,9 +89,61 @@ After downloading putting it to the root of this github repo and using the follo
 ```bash
 > uv run -m gcp2pnet.inference \
     --img_path "path/to/demo_image.jpg" \
-    --resume "demo_best_mae.pth"
+    --weight_path "demo_best_mae.pth"
 ```
 
+It will pop up a window to the results, to save result images directly to folder, please use `--result_path`:
+
+```bash
+> uv run -m gcp2pnet.inference \
+    --img_path "./data/20220207_17_Y_a_v03_h02.JPG"\
+    --weight_path "demo_best_mae.pth" \
+    --result_path "./data/20220207_17_Y_a_v03_h02_results.png"
+```
+
+if will print the DataFrame results in console and result image:
+
+```
+             x           y     score cls
+0    17.917275   73.201589  0.651996   1
+1   110.389812   78.006449  0.751744   1
+4   143.182544  177.582699  0.670365   1
+5   224.996984  242.175739  0.670584   1
+6    75.902485   91.724290  0.612998   2
+8   129.165154  136.832257  0.591995   2
+9   190.516909  151.484091  0.590699   2
+10  176.682974  179.405544  0.666000   2
+11  145.889114  227.981217  0.646891   2
+```
+
+![](data/20220207_17_Y_a_v03_h02_result.png)
+
+---
+
+Or if you want to coding by yourself in python (e.g. for batch processing):
+
+```python
+import gcp2pnet
+
+args = gcp2pnet.inference.get_inf_arguments()
+
+args.weight_path = "./demo_best_mae.pth"
+args.img_path = "./data/20220207_17_Y_a_v03_h02.JPG"
+args.result_path = "./data/20220207_17_Y_a_v03_h02_results.png"
+
+# start inferencing
+model = gcp2pnet.inference.load_model(args)
+img_numpy, img_tensor = gcp2pnet.inference.load_image_to_tensor(args.img_path, args.device)
+raw_results = gcp2pnet.inference.apply_model(model, img_tensor, args.threshold)
+results_df  = gcp2pnet.inference.postprocess_point_clusters(raw_results)
+# the final processed results in DataFrame
+filtered_df = gcp2pnet.inference.postprocess_merge_by_distance(results_df, prox_distance=25)
+
+# draw results
+gcp2pnet.inference.draw_result_figures(
+    img_numpy, raw_results, clustered_df, merged_df,
+    show=False, save_path=args.result_path)
+```
 
 ## Dataset
 
