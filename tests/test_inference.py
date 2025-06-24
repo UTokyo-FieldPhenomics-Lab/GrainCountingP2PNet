@@ -13,7 +13,8 @@ from gcp2pnet.inference import (
     get_inf_arguments, load_model, 
     load_image_to_tensor, apply_model,
     postprocess_point_clusters_one_class, postprocess_point_clusters,
-    postprocess_merge_by_distance
+    postprocess_merge_by_distance,
+    draw_result_figures
 )
 
 
@@ -178,3 +179,7 @@ def test_inference_postprocess_merge_by_distance(setup_inference):
                 path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
 
     plt.savefig("tests/outputs/test_inference_postprocess_merge_by_distance.png")
+
+    # draw_all_figures
+    draw_result_figures(img_numpy, raw_results, results_df, filtered_df, 
+                        "tests/outputs/test_inference_all.png")

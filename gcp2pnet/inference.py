@@ -14,6 +14,9 @@ import torchvision.transforms as standard_transforms
 import numpy as np
 import networkx as nx
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib import patheffects
+from adjustText import adjust_text
 
 from PIL import Image
 from scipy import spatial
@@ -40,8 +43,9 @@ def get_inf_arguments():
     parser.add_argument('--line', default=2, type=int,
                         help="line number of anchor points")
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--weight_path', default="", help='resume from checkpoint')
+    parser.add_argument('--weight_path', default="demo_best_mae.pth", help='resume from checkpoint')
     parser.add_argument('--img_path', default="", help="The path to image")
+    parser.add_argument('--result_path', default=None, help="The path to save result image")
     parser.add_argument('--num_workers', default=1, type=int)
     parser.add_argument('--gpu_id', default=0, type=int, help='the gpu used for training')
     parser.add_argument('--device', default=device, type=str, 
@@ -167,7 +171,7 @@ def postprocess_point_clusters_one_class(points, scores):
     return np.asarray(points_n), np.asarray(scores_n)
 
 def postprocess_point_clusters(raw_dict):
-    results = pd.DataFrame(columns=['x', 'y', 'score', 'class'])
+    results = pd.DataFrame(columns=['x', 'y', 'score', 'cls'])
     for key in raw_dict.keys():
         points_n, scores_n = postprocess_point_clusters_one_class(
             raw_dict[key]['points'],
@@ -205,6 +209,73 @@ def postprocess_merge_by_distance(results_df, prox_distance=25):
 
     return filtered_df
 
+def draw_result_figures(img_numpy, raw_results, after_point_clusters, after_merge_by_distance, 
+                        show=True, save_path=None,):
+    fig, ax = plt.subplots(1,3, figsize=(10,4))
+
+    c = {1: 'r', 2: 'b'}
+
+    # raw outputs
+    ax[0].imshow(img_numpy)
+    ax[0].scatter(*raw_results[1]['points'].T, c='r', s=1)
+    ax[0].scatter(*raw_results[2]['points'].T, c='b', s=1)
+    ax[0].set_title("Raw detections")
+
+    # clustered outputs
+    ax[1].imshow(img_numpy)
+    class_color = [c[i] for i in after_point_clusters.cls]
+    ax[1].scatter(after_point_clusters.x, after_point_clusters.y, 
+                  c=class_color, s=15, marker='o', edgecolors='w')
+    
+
+    texts = []
+    for x, y, score, cls in zip(after_point_clusters.x, after_point_clusters.y, after_point_clusters.score, after_point_clusters.cls):
+        texts.append(
+            ax[1].text(x, y, f"{score:.2f}", ha='center', va='bottom', 
+                    fontsize=10, color=c[cls], alpha=0.7,
+                    path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
+        )
+
+    adjust_text(texts, force_text=0.1, arrowprops=dict(arrowstyle="-|>",
+                                                    color='w', alpha=0.8), ax=ax[1])
+    ax[1].set_title("Clustered")
+
+    # distance merged outputs
+    ax[2].imshow(img_numpy)
+
+    c = {1: 'r', 2: 'b'}
+    class_color = [c[i] for i in after_merge_by_distance.cls]
+    ax[2].scatter(after_merge_by_distance.x, after_merge_by_distance.y, c=class_color, s=15, marker='o', edgecolors='w')
+
+    for x, y, score, cls in zip(after_merge_by_distance.x, after_merge_by_distance.y, after_merge_by_distance.score, after_merge_by_distance.cls):
+        ax[2].text(x, y-5, f"{score:.2f}", ha='center', va='bottom', 
+                fontsize=10, color=c[cls], alpha=0.7,
+                path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
+        
+    ax[2].set_title("Merged by distance")
+
+    plt.tight_layout()
+
+    if show:
+        # plt.show() -> cv2.show()
+        fig.canvas.draw()
+        img_argb = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+        img_argb = img_argb.reshape(fig.canvas.get_width_height()[::-1] + (4,))  # (H, W, 4)
+        img_rgb = img_argb[..., 1:]  # 去掉 Alpha 通道，保留 RGB (H, W, 3)
+        plt.close(fig)  # 关闭 Matplotlib 图形
+
+        print("Press any key to close the window")
+
+        img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+
+        cv2.imshow("Results Window", img_bgr)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    if save_path is not None:
+        plt.savefig(save_path)
+        plt.close(fig) 
+
 
 def main(args, debug=False):
     os.environ["CUDA_VISIBLE_DEVICES"] = '{}'.format(args.gpu_id)
@@ -214,29 +285,20 @@ def main(args, debug=False):
     model = load_model(args)
 
     img_numpy, img_tensor = load_image_to_tensor(args.img_path, args.device)
-
     raw_results = apply_model(model, img_tensor, args.threshold)
 
-    clustered_pd = postprocess_point_clusters(raw_results)
+    clustered_df = postprocess_point_clusters(raw_results)
+    merged_df = postprocess_merge_by_distance(clustered_df, prox_distance=25)
 
-    
-    # work to here
+    print(merged_df)
 
-    threshold = 0.5
-    # filter the predictions
-    points = outputs_points[outputs_scores > threshold].detach().cpu().numpy().tolist()
-    predict_cnt = int((outputs_scores > threshold).sum())
+    if args.result_path is None:
+        # not saving to path, show images instead
+        draw_result_figures(img_numpy, raw_results, clustered_df, merged_df, show=True)
 
-    outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)[:, :, 1][0]
-
-    outputs_points = outputs['pred_points'][0]
-    # draw the predictions
-    size = 2
-    img_to_draw = cv2.cvtColor(np.array(img_raw), cv2.COLOR_RGB2BGR)
-    for p in points:
-        img_to_draw = cv2.circle(img_to_draw, (int(p[0]), int(p[1])), size, (0, 0, 255), -1)
-    # save the visualized image
-    cv2.imwrite(os.path.join(args.output_dir, 'pred{}.jpg'.format(predict_cnt)), img_to_draw)
+    else:
+        draw_result_figures(img_numpy, raw_results, clustered_df, merged_df, show=False, 
+                            save_path=args.result_path)
 
 if __name__ == '__main__':
     import sys
