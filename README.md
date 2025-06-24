@@ -6,7 +6,20 @@ GrainCountingP2PNet is a modified P2PNet with multi level pyramid features ...
 
 ## Setup Environment
 
-This project has been examined on Linux Manjaro x86 machine with Nvidia RTX 4090, Windows OS has not been tested but should be executable.
+This project requires **minimum** cuda version `12.4`. 
+
+```bash
+> nvidia-smi
+
+Tue Jun 24 12:01:39 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.144                Driver Version: 570.144        CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+```
+
+It has been examined on **Arch-Linux** x86 machine with Nvidia RTX 4090 and **Windows 11** with cuda `12.9` and Nvidia RTX 3060Ti.
+
+---
 
 To ensure reproducibility, we recommend using [uv](https://docs.astral.sh/uv/getting-started/installation/) to create and manage Python virtual environments. Please verify that the `uv` command is available in your command line:
 
@@ -24,18 +37,48 @@ Using the following command to setup the virtual environment for code developmen
 > uv sync  # install all dependencies
 ```
 
-To use that virtual environment, you can run python scripts directly (refer [Running scripts | uv](https://docs.astral.sh/uv/guides/scripts/)):
+To use that virtual environment, you can run python scripts directly once you entered the project folder with `.venv` (refer [Running scripts | uv](https://docs.astral.sh/uv/guides/scripts/)):
 
 ```bash
 > uv run xxxx.py
 ```
 
-Which is almost equal to the traditional way that activate the virtual enviroment and execute the code:
+<details>
+
+<summary>Click here to show the equal traditional way</summary>
 
 ```bash
 > source .venv/bin/activate
 (.venv) > python xxxx.py
 ```
+
+</details>
+
+---
+
+To run python command, using the following command:
+
+```bash
+> uv run python
+Python 3.11.12 (main, Apr  9 2025, 04:04:00) [Clang 20.1.0 ] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> 
+```
+
+<details>
+
+<summary>Click here to show the equal traditional way</summary>
+
+```bash
+> source .venv/bin/activate
+(.venv) > python
+Python 3.11.12 (main, Apr  9 2025, 04:04:00) [Clang 20.1.0 ] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> 
+```
+
+</details>
+
 
 ## Inference 
 
