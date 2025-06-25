@@ -352,3 +352,25 @@ def generate_patches_with_labels(img_np, patches, label_df, trimming_size=256):
         output_patches.append( {'imarray': img_cropped, 'label': recorded_points, 'patch_on_raw': p} )
 
     return output_patches
+
+def save_one_output_patch(output_patch_dict, image_stem, image_suffix, image_save_folder, label_save_folder):
+    imarray = output_patch_dict['imarray']
+    label_df = output_patch_dict['label']
+    patch_on_raw = output_patch_dict['patch_on_raw']
+
+    w_pixel = patch_on_raw[0]
+    h_pixel = patch_on_raw[1]
+
+    size = patch_on_raw[2] - patch_on_raw[0]
+
+    image_name = f"{image_stem}_x{w_pixel}_y{h_pixel}_s{size}.{image_suffix}"
+    label_name = f"{image_stem}_x{w_pixel}_y{h_pixel}_s{size}.txt"
+
+    image_path = os.path.join(image_save_folder, image_name)
+    label_path = os.path.join(label_save_folder, label_name)
+
+    cv2.imwrite(image_path, imarray)
+
+    with open(label_path, "w") as f:
+        for row, label in label_df.iterrows():
+            f.write(f"{int(label.cls)} {int(label.x)} {int(label.y)}\n")

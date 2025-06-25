@@ -1,4 +1,6 @@
+import os
 import random
+from pathlib import Path
 
 import cv2
 import torch
@@ -9,7 +11,8 @@ import matplotlib.patches as patches
 from gcp2pnet.datasets import (
     SHHADataset, loading_dataset, loading_label_dict,
     parse_v7labs_json_file, generate_patches,
-    generate_patches_with_labels
+    generate_patches_with_labels, 
+    save_one_output_patch,
 )
 from gcp2pnet.utils import fix_random_seed
 
@@ -117,3 +120,29 @@ def test_generate_patches_with_labels():
     plt.tight_layout()
     plt.savefig("tests/outputs/test_dataset_generate_patches_with_labels_preview.png")
     plt.close(fig)
+
+def test_save_one_output_patch():
+
+    label_df = parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
+    img_np = cv2.imread(v7lab_test_img)
+    patch_list = generate_patches(img_np.shape, patch_size=256*3, overlap_ratio=0.0)
+    output_patch_list = generate_patches_with_labels(img_np, patch_list, label_df, trimming_size=256)
+    demo_test = output_patch_list[10]
+
+    # test save one output patch
+    img_path = Path(v7lab_test_img)
+    save_one_output_patch(
+        demo_test, image_stem=img_path.stem, image_suffix=img_path.suffix,
+        image_save_folder="tests/outputs/",
+        label_save_folder="tests/outputs/",
+    )
+    
+    p = demo_test['patch_on_raw']
+    out_txt_file = f"tests/outputs/{str(img_path.stem)}_x{p[0]}_y{p[1]}_s{256*3}.txt"
+
+    assert os.path.exists( out_txt_file )
+
+    expected_txt = "2 110 206\n"
+
+    with open(out_txt_file, 'r', encoding="utf-8") as f:
+        assert expected_txt == f.readlines()[0]
