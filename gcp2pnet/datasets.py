@@ -8,6 +8,7 @@ from pathlib import Path
 import cv2
 import torch
 import numpy as np
+import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as standard_transforms
@@ -231,3 +232,18 @@ def loading_label_dict(dataset_root):
 
 # self defined functions to process v7labs annotation data
 # todo
+def parse_v7labs_json_file(json_path, label_dict):
+    output = pd.DataFrame(columns=['cls', 'x', 'y'])
+    with open(json_path) as f:
+        jsonfile = json.load(f)
+        keypoints = jsonfile["annotations"]
+
+        for keypoint in keypoints:
+            if "keypoint" in keypoint.keys():
+                label_id = label_dict[str(keypoint["name"])]
+                x = int(keypoint["keypoint"]["x"])
+                y = int(keypoint["keypoint"]["y"])
+
+                output.loc[len(output)] = {"x": x, "y": y, "cls": label_id}
+
+    return output
