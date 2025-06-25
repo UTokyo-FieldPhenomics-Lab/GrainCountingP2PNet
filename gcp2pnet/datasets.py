@@ -1,6 +1,7 @@
 # this code is partly modified from 
 # https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/main/crowd_datasets/
 
+import os
 import json
 import random
 from pathlib import Path
@@ -230,20 +231,124 @@ def loading_label_dict(dataset_root):
 
     return label_dict, class_n
 
+############################################################
 # self defined functions to process v7labs annotation data
-# todo
+############################################################
 def parse_v7labs_json_file(json_path, label_dict):
     output = pd.DataFrame(columns=['cls', 'x', 'y'])
     with open(json_path) as f:
         jsonfile = json.load(f)
         keypoints = jsonfile["annotations"]
 
-        for keypoint in keypoints:
+        for i, keypoint in enumerate(keypoints):
             if "keypoint" in keypoint.keys():
                 label_id = label_dict[str(keypoint["name"])]
                 x = int(keypoint["keypoint"]["x"])
                 y = int(keypoint["keypoint"]["y"])
 
+                if x < 0 or y < 0:
+                    print(f"[Warning] drop annotation [{i}] with x={x} and y={y} for class [{keypoint['name']}]")
+                    continue
+
                 output.loc[len(output)] = {"x": x, "y": y, "cls": label_id}
 
     return output
+
+def generate_patches(img_size, patch_size, overlap_ratio=0):
+    """The function to crop images to patch for training data
+
+    <------ Patch size ------>
+
+                   <-overlap->
+    +--------------+---------+
+    |              |         |
+    | <- stride -> |         |
+    |     size     |         |
+    |              |         |
+    +--------------o---------+-------o
+    |              |         |       |
+    |              |         |       |
+    +--------------+---------+       |
+                   |                 |
+                   |                 |
+                   o-----------------o
+                   <--  next patch -->
+
+    Parameters
+    ----------
+    img_path : str
+        The path string to image 
+    label_pd : pd.DataFrame
+        The dataframe after parse json file, columns = [cls, x, y] in raw images
+    patch_size : int
+        The width/height of each patch on raw images pixels
+    overlap_ratio : int, optional
+        the buffer area width/patch width inside the patch, by default 0
+    trimming_size : int, optional
+        the final output size, by default 256
+        if patch_size larger then trimming size, resize patch to trimming size then outputs
+        e.g. patch_size = 256*3, overlap_ratio = 0, trimming_size=256, 
+             will shrink 1/3 smaller as final outputs
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    img_h, img_w = img_size[:2]
+
+    overlap_size = int(patch_size * overlap_ratio)
+
+    patches = []
+    stride = patch_size - overlap_size
+
+    for y in range(0, img_h, stride):
+        for x in range(0, img_w, stride):
+            x1 = x
+            y1 = y
+            x2 = min(x + patch_size, img_w)
+            y2 = min(y + patch_size, img_h)
+
+            # Adjust if patch would exceed image boundaries
+            if x2 - x1 < patch_size:
+                x1 = max(0, x2 - patch_size)
+            if y2 - y1 < patch_size:
+                y1 = max(0, y2 - patch_size)
+
+            patches.append((x1, y1, x2, y2))
+
+    return patches
+    
+def generate_patches_with_labels(img_np, patches, label_df, trimming_size=256):
+
+    output_patches = []
+
+    for p in patches:
+
+        (start_w, start_h, end_w, end_h) = p
+
+        recorded_points = label_df[
+            (label_df.x >= start_w) & (label_df.x <= end_w) & \
+            (label_df.y >= start_h) & (label_df.y <= end_h)]
+        
+        if len(recorded_points) == 0:
+            continue
+
+        # for patches with annotations
+        img_cropped = img_np[start_h:end_h, start_w:end_w]
+
+        recorded_points.x -= start_w
+        recorded_points.y -= start_h
+
+        patch_size = end_w - start_w
+
+        ratio = trimming_size / patch_size
+
+        if ratio != 1:
+            img_cropped = cv2.resize(img_cropped, (trimming_size, trimming_size))
+            recorded_points.x *= ratio
+            recorded_points.y *= ratio
+
+        output_patches.append( {'imarray': img_cropped, 'label': recorded_points, 'patch_on_raw': p} )
+
+    return output_patches
