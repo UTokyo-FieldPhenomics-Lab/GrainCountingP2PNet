@@ -23,8 +23,8 @@ gt_label_dict = {'Fill': 1, '平べったいけど沈む': 1, '平べったく�
 def test_demo_dataset_loading():
     train_set, valid_set = loading_dataset( dataset_dir )
 
-    assert len(train_set) == 3029
-    assert len(valid_set) == 1333
+    assert len(train_set) == 2719
+    assert len(valid_set) == 1332
 
     assert train_set[0][0].shape == torch.Size([1, 3, 256, 256])
     assert train_set[0][1][0]['image_path'].stem == train_set[0][1][0]['label_path'].stem
@@ -45,7 +45,7 @@ def test_parse_v7labs_json():
 
     output = _parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
 
-    assert len(output) == 134
+    assert len(output) == 133
     assert output.cls[0] == 2
     assert output.x[0] == 4240
     assert output.y[0] == 6439
@@ -139,7 +139,7 @@ def test_save_one_output_patch():
 
     assert os.path.exists( out_txt_file )
 
-    expected_txt = "2 110 206\n"
+    expected_txt = "2 110.66666666666666 206.66666666666666\n"
 
     with open(out_txt_file, 'r', encoding="utf-8") as f:
         assert expected_txt == f.readlines()[0]

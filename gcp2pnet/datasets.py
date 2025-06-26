@@ -125,14 +125,14 @@ class SHHADataset(Dataset):
         points = []
         labels = []
         with open(anno_json_path, 'r') as f:
-            pts = f.read().splitlines()
-            for pt_0 in pts:
-                pt = eval(pt_0)
-                x = float(pt[0])#/2
-                y = float(pt[1])#/2
-                label = float(pt[2])
+            lines = f.read().splitlines()
+            for line in lines:
+                cls, x, y = line.split(' ')
+                x = float(x)
+                y = float(y)
+                cls = float(cls)
                 points.append([x, y])
-                labels.append([label])
+                labels.append([cls])
 
         return np.array(points), np.array(labels)
     
@@ -171,10 +171,10 @@ def _listdir_all_images(pathlib_folder):
         pathlib_folder = Path(pathlib_folder)
 
     return list(pathlib_folder.glob("*.[jJ][pP][gG]")) + \
-            list(pathlib_folder.glob("*.[jJ][pP][eE][gG]")) + \
-            list(pathlib_folder.glob("*.[pP][nN][gG]")) + \
-            list(pathlib_folder.glob("*.[bB][mM][pP]")) + \
-            list(pathlib_folder.glob("*.[tT][iI][fF][fF]"))
+           list(pathlib_folder.glob("*.[jJ][pP][eE][gG]")) + \
+           list(pathlib_folder.glob("*.[pP][nN][gG]")) + \
+           list(pathlib_folder.glob("*.[bB][mM][pP]")) + \
+           list(pathlib_folder.glob("*.[tT][iI][fF][fF]"))
 
 def _match_image_and_label(img_list, lbl_list):
     img_list_ordered = []
@@ -190,7 +190,9 @@ def _match_image_and_label(img_list, lbl_list):
     return img_list_ordered, lbl_list_ordered
     
 def loading_dataset(dataset_root):
-    dataset_root = Path(dataset_root)
+    if not isinstance(dataset_root, Path):
+        dataset_root = Path(dataset_root)
+
     # load train and valid labels
     train_image_folder = dataset_root / "images" / "train"
     valid_image_folder = dataset_root / "images" / "valid"
@@ -237,7 +239,7 @@ def loading_label_dict(label_json_file):
 # self defined functions to process v7labs annotation data
 ############################################################
 def _parse_v7labs_json_file(json_path, label_dict):
-    output = pd.DataFrame(columns=['cls', 'x', 'y'])
+    output = pd.DataFrame(columns=['cls', 'x', 'y'], dtype=float)
     with open(json_path) as f:
         jsonfile = json.load(f)
         keypoints = jsonfile["annotations"]
@@ -245,8 +247,8 @@ def _parse_v7labs_json_file(json_path, label_dict):
         for i, keypoint in enumerate(keypoints):
             if "keypoint" in keypoint.keys():
                 label_id = label_dict[str(keypoint["name"])]
-                x = int(keypoint["keypoint"]["x"])
-                y = int(keypoint["keypoint"]["y"])
+                x = float(keypoint["keypoint"]["x"])
+                y = float(keypoint["keypoint"]["y"])
 
                 if x < 0 or y < 0:
                     print(f"[Warning] drop annotation [{i}] with x={x} and y={y} for class [{keypoint['name']}]")
@@ -359,8 +361,8 @@ def generate_patches_with_labels(img_np, patches, label_df, trimming_size=256):
 
         if ratio != 1:
             img_cropped = cv2.resize(img_cropped, (trimming_size, trimming_size))
-            recorded_points.loc[:, 'x'] = (recorded_points.loc[:, 'x'] * ratio).astype(int)
-            recorded_points.loc[:, 'y'] = (recorded_points.loc[:, 'y'] * ratio).astype(int)
+            recorded_points.loc[:, 'x'] = (recorded_points.loc[:, 'x'] * ratio).astype(float)
+            recorded_points.loc[:, 'y'] = (recorded_points.loc[:, 'y'] * ratio).astype(float)
 
         output_patches.append( {'imarray': img_cropped, 'label': recorded_points, 'patch_on_raw': p} )
 
@@ -376,8 +378,8 @@ def save_one_output_patch(output_patch_dict, image_stem, image_suffix, image_sav
 
     size = patch_on_raw[2] - patch_on_raw[0]
 
-    image_name = f"{image_stem}_x{w_pixel}_y{h_pixel}_s{size}.{image_suffix}"
-    label_name = f"{image_stem}_x{w_pixel}_y{h_pixel}_s{size}.txt"
+    image_name = f"{image_stem}_x{int(w_pixel)}_y{int(h_pixel)}_s{size}{image_suffix}"
+    label_name = f"{image_stem}_x{int(w_pixel)}_y{int(h_pixel)}_s{size}.txt"
 
     image_path = os.path.join(image_save_folder, image_name)
     label_path = os.path.join(label_save_folder, label_name)
@@ -386,7 +388,7 @@ def save_one_output_patch(output_patch_dict, image_stem, image_suffix, image_sav
 
     with open(label_path, "w") as f:
         for row, label in label_df.iterrows():
-            f.write(f"{int(label.cls)} {int(label.x)} {int(label.y)}\n")
+            f.write(f"{int(label.cls)} {float(label.x)} {float(label.y)}\n")
 
 
 def convert_folder_to_dataset(
@@ -459,7 +461,23 @@ def get_dataset_convert_arguments():
     parser.add_argument('--overlap_ratio', default=0.0, type=float, help="the buffer area width/patch width inside the patch, by default 0.0 no overlap")
     parser.add_argument('--patch_save_size', default=None, type=int, help="The saved patch image size, by default the same as patch size")
 
-    return parser.parse_known_args()[0] #if known else parser.parse_args()
+    args = parser.parse_known_args()[0]
+
+    args.dataset_folder = Path(args.dataset_folder)
+    args.train_image_folder = Path(args.train_image_folder)
+    args.train_label_folder = Path(args.train_label_folder)
+    args.valid_image_folder = Path(args.valid_image_folder)
+    args.valid_label_folder = Path(args.valid_label_folder)
+
+    if args.test_image_folder is not None:
+        args.test_image_folder = Path(args.test_image_folder)
+    if args.test_label_folder is not None:
+        args.test_label_folder = Path(args.test_label_folder)
+
+    args.classes_json = Path(args.classes_json)
+
+    return args
+
     
 if __name__ == '__main__':
     import sys
