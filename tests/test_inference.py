@@ -22,13 +22,14 @@ def test_get_inf_arguments():
     args = get_inf_arguments()
 
     assert args.seed == 42
-    assert args.weight_path == ''
+    assert args.weight_path == 'demo_best_mae.pth'
     assert args.img_path == ''
 
 def test_load_model():
     args = get_inf_arguments()
 
     with pytest.raises(FileNotFoundError, match=re.escape("Could not load model weight")):
+        args.weight_path = ''
         model = load_model(args)
 
     with pytest.raises(FileNotFoundError, match=re.escape("Could not load model weight")):
@@ -48,7 +49,7 @@ def test_load_image_to_tensor():
         img_tensor = load_image_to_tensor(img_path, args.device)
 
     img_path = "./data/inference/20220207_17_Y_a_v03_h02.JPG"
-    img_tensor = load_image_to_tensor(img_path, args.device)
+    img_np, img_tensor = load_image_to_tensor(img_path, args.device)
 
     assert img_tensor.shape == torch.Size([1, 3, 256, 256])
 
@@ -157,9 +158,7 @@ def test_inference_post_processing(setup_inference):
 def test_inference_postprocess_merge_by_distance(setup_inference):
     args, model, img_numpy, img_tensor = setup_inference
     raw_results = apply_model(model, img_tensor, args.threshold)
-
     results_df = postprocess_point_clusters(raw_results)
-
     filtered_df = postprocess_merge_by_distance(results_df, prox_distance=25)
 
     ###############
@@ -181,5 +180,5 @@ def test_inference_postprocess_merge_by_distance(setup_inference):
     plt.savefig("tests/outputs/test_inference_postprocess_merge_by_distance.png")
 
     # draw_all_figures
-    draw_result_figures(img_numpy, raw_results, results_df, filtered_df, 
-                        "tests/outputs/test_inference_all.png")
+    draw_result_figures(img_numpy, raw_results, results_df, filtered_df, show=False,
+                        save_path="tests/outputs/test_inference_all.png")

@@ -3,6 +3,7 @@ import os
 import argparse
 import warnings
 warnings.filterwarnings('ignore')
+from pathlib import Path
 
 import cv2
 import torch
@@ -47,7 +48,15 @@ def get_inf_arguments():
     parser.add_argument('--device', default=device, type=str, 
                         help="the torch running device, 'cpu' or 'cuda'")
 
-    return parser.parse_known_args()[0] #if known else parser.parse_args()
+    args = parser.parse_known_args()[0]
+
+    args.weight_path = Path(args.weight_path)
+    args.img_path = Path(args.img_path)
+
+    if args.result_path is not None:
+        args.result_path = Path(args.result_path)
+
+    return args
 
 def load_model(args):
     # ensure model file exists

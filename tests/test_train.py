@@ -19,7 +19,7 @@ def test_get_train_arguements():
 def test_main_one_epoch_run():
 
     args = get_train_arguments()
-    args.dataset_folder = "./data/demo_dataset"
+    args.dataset_folder = Path("data/demo_dataset")
     args.run_name = "tests"
     args.epochs = 2
     args.eval_freq = 1
@@ -30,7 +30,6 @@ def test_main_one_epoch_run():
 
     # Test if train.main() runs without errors
     try:
-        
         main(args)
 
     except Exception as e:

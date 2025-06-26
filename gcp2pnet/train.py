@@ -82,7 +82,12 @@ def get_train_arguments():
                         help='frequency of evaluation, default setting is evaluating in every 5 epoch')#Change into rice data !!! -> chage default value
     parser.add_argument('--gpu_id', default=0, type=int, help='the gpu used for training')
     
-    return parser.parse_known_args()[0] #if known else parser.parse_args()
+    args = parser.parse_known_args()[0]
+
+    args.dataset_folder = Path(args.dataset_folder)
+    args.output_dir = Path(args.output_dir)
+
+    return args
 
 
 def main(args):
