@@ -1,15 +1,15 @@
 # EasyP2PNet: A Multiple-Class P2PNet Based on RGB Images
 
-EasyP2PNet is an **easy-to-use** and **multiple class** P2PNet modificiation.
+EasyP2PNet is an **easy-to-use** and **multiple class** [P2PNet](https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet) modificiation.
 
 **Features**:
 
 * Supports **multi-class** points counting.
 * Enables dataset generation from [v7labs](https://www.v7labs.com/) and [labelme](https://github.com/wkentaro/labelme).
 * Provides a user-friendly API for training and inferencing.
-* Ensures fast and reproducible dependency installation using [uv(https://docs.astral.sh/uv/getting-started/installation/).
+* Ensures fast and reproducible dependency installation using [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-Here is the related paper for dual-class grain counting: [GrainCountingP2PNet: An RGB image-based phenotyping system for assessing spikelet fertility in rice panicles (under view)]()
+Here is our related paper for dual-class grain counting: [GrainCountingP2PNet: An RGB image-based phenotyping system for assessing spikelet fertility in rice panicles (under view)]()
 
 ## 0. Setup Environment
 
@@ -160,12 +160,22 @@ gcp2pnet.inference.draw_result_figures(
 
 The organized demo dataset for training is available at [release/demo_dataset.zip](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.1)
 
-Please download and unzip contents into `data/demo_dataset/` with the following structures:
+Please download and unzip contents into `data/demo_dataset/` with the following yolo-like structures:
 
 ```
 data/demo_dataset/
-|-- train/
-|-- valid/
+|-- images/
+|   |-- train/
+|   |   |-- aaa.jpg
+|   |   |-- bbb.jpg
+|   |   |-- ...
+|   |-- valid/
+|-- labels/
+|   |-- train/
+|   |   |-- aaa.txt
+|   |   |-- bbb.txt
+|   |   |-- ...
+|   |-- valid/
 |-- classes.json
 ```
 
@@ -233,6 +243,20 @@ Please unzip to `data/demo_raw` folder and then execute the following command:
 ```
 
 It will convert the raw images and labels to standard `data/demo_dataset` folder ready for training.
+
+The sliced image patch has the file name format: `originame_x{...}_y{...}_s{...}.jpg`, `(x, y)` are the top left corner of patch on raw image, the `s` is the original patch size on raw image.
+
+The converted label txt file has the following format: `class x.pix y.pix`, for example:
+
+**originame_x{...}_y{...}_s{...}.txt**:
+
+```plaintxt
+2 212 253
+2 210 196
+1 236 161
+1 201 107
+1 234 104
+```
 </details>
 
 
@@ -259,7 +283,7 @@ Serving TensorBoard on localhost; to expose to the network, use a proxy or pass 
 TensorBoard 2.19.0 at http://localhost:8123/ (Press CTRL+C to quit)
 ```
 
-Then press `ctrl` + left click to open the `localhost;8123` to check in browser.
+Then press `ctrl` + left click to open the `localhost:8123` to check in browser.
 
 
 
