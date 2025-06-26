@@ -251,11 +251,12 @@ The converted label txt file has the following format: `class x.pix y.pix`, for 
 **originame_x{...}_y{...}_s{...}.txt**:
 
 ```plaintxt
-2 212 253
-2 210 196
-1 236 161
-1 201 107
-1 234 104
+2 110.66666666666666 206.66666666666666
+2 228.66666666666666 2.6666666666666665
+1 135.0 228.0
+1 179.0 170.0
+1 199.66666666666666 99.66666666666666
+1 240.0 44.666666666666664
 ```
 </details>
 
@@ -266,11 +267,13 @@ The converted label txt file has the following format: `class x.pix y.pix`, for 
 ```bash
 > uv run -m gcp2pnet.train \
     --dataset_folder ./data/demo_dataset \
-    --batch_size 1 \  # due to multi-class, currently only batch_size=1 is supported.
-    --epochs 100 \ 
+    --batch_size 1 \
+    --epochs 100 \
     --run_name demo_train \
     ...
 ```
+
+Note: due to multi-class, currently only batch_size=1 is supported.
 
 After training, using the following command to check the results figure by tensorboard:
 
