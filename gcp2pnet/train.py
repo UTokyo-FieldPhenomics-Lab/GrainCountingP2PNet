@@ -146,7 +146,7 @@ def main(args):
     # create the training and valiation set
     # train_set, val_set = loading_data(args.data_root)  # args_dataroot = training_data_root_dir
     train_set, val_set = datasets.loading_dataset( args.dataset_folder )
-    label_dict, class_n = datasets.loading_label_dict( args.dataset_folder ) 
+    label_dict, class_n = datasets.loading_label_dict( args.dataset_folder / "classes.json") 
 
     # create the sampler used during training
     sampler_train = torch.utils.data.RandomSampler(train_set)

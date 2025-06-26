@@ -1,12 +1,8 @@
 # Modified from https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/main/run_test.py
 import os
 import argparse
-import datetime
-import random
-import time
 import warnings
 warnings.filterwarnings('ignore')
-from pathlib import Path
 
 import cv2
 import torch
@@ -21,7 +17,7 @@ from adjustText import adjust_text
 from PIL import Image
 from scipy import spatial
 
-from . import models, utils, engine
+from . import models, utils
 
 
 def get_inf_arguments():
@@ -280,7 +276,7 @@ def draw_result_figures(img_numpy, raw_results, after_point_clusters, after_merg
 def main(args, debug=False):
     os.environ["CUDA_VISIBLE_DEVICES"] = '{}'.format(args.gpu_id)
 
-    utils.print_args(args)
+    utils.print_args(args, title="Inference Arguements")
 
     model = load_model(args)
 

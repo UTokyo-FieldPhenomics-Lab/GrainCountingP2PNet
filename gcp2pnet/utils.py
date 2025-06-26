@@ -21,8 +21,8 @@ def gen_random_scale_n(img, rnd=3):
     scale = torch.tensor(np.random.uniform(0.1, 1.91, (1,1, img.size()[2],img.size()[3]))).float()
     return torch.mul(img, scale)
 
-def print_args(args):
-    print("="*50 + " Training Arguments " + "="*50)
+def print_args(args, title="Training Arguments"):
+    print("="*50 + f" {title} " + "="*50)
     for arg in vars(args):
         print(f"{arg:>20}: {getattr(args, arg)}")
     print("="*120)
