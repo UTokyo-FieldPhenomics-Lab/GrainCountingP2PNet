@@ -10,7 +10,7 @@ import matplotlib.patches as patches
 
 from gcp2pnet.datasets import (
     SHHADataset, loading_dataset, loading_label_dict,
-    parse_v7labs_json_file, generate_patches,
+    _parse_v7labs_json_file, generate_patches,
     generate_patches_with_labels, 
     save_one_output_patch,
 )
@@ -31,12 +31,9 @@ def test_demo_dataset_loading():
 
 def test_parse_dataset_classes_json():
 
-    label_dict, class_n = loading_label_dict( dataset_dir ) 
-
-    
+    label_dict, class_n = loading_label_dict( Path(dataset_dir) / "classes.json" ) 
 
     assert label_dict == gt_label_dict
-
     assert class_n == 2
 
 
@@ -46,7 +43,7 @@ color_dict = {1: 'r', 2: 'b'}
 
 def test_parse_v7labs_json():
 
-    output = parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
+    output = _parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
 
     assert len(output) == 134
     assert output.cls[0] == 2
@@ -55,7 +52,7 @@ def test_parse_v7labs_json():
 
 def test_generate_patches():
 
-    label_df = parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
+    label_df = _parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
 
     img_np = cv2.imread(v7lab_test_img)
     
@@ -93,7 +90,7 @@ def test_generate_patches():
 
 def test_generate_patches_with_labels():
 
-    label_df = parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
+    label_df = _parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
     img_np = cv2.imread(v7lab_test_img)
     patch_list = generate_patches(img_np.shape, patch_size=256*3, overlap_ratio=0.0)
 
@@ -123,7 +120,7 @@ def test_generate_patches_with_labels():
 
 def test_save_one_output_patch():
 
-    label_df = parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
+    label_df = _parse_v7labs_json_file(v7lab_test_json, gt_label_dict)
     img_np = cv2.imread(v7lab_test_img)
     patch_list = generate_patches(img_np.shape, patch_size=256*3, overlap_ratio=0.0)
     output_patch_list = generate_patches_with_labels(img_np, patch_list, label_df, trimming_size=256)

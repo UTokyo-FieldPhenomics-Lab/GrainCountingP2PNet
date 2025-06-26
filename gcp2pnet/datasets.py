@@ -4,6 +4,8 @@
 import os
 import json
 import random
+import argparse
+import shutil
 from pathlib import Path
 
 import cv2
@@ -12,6 +14,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
+from tqdm import tqdm
 import torchvision.transforms as standard_transforms
 
 
@@ -164,6 +167,9 @@ class SHHADataset(Dataset):
         return result_img, result_den, result_label
     
 def _listdir_all_images(pathlib_folder):
+    if not isinstance(pathlib_folder, Path):
+        pathlib_folder = Path(pathlib_folder)
+
     return list(pathlib_folder.glob("*.[jJ][pP][gG]")) + \
             list(pathlib_folder.glob("*.[jJ][pP][eE][gG]")) + \
             list(pathlib_folder.glob("*.[pP][nN][gG]")) + \
@@ -218,11 +224,7 @@ def loading_dataset(dataset_root):
     return train_set, valid_set
 
 
-def loading_label_dict(dataset_root):
-
-    dataset_root = Path(dataset_root)
-
-    label_json_file = dataset_root / "classes.json"
+def loading_label_dict(label_json_file):
 
     with open(label_json_file, 'r', encoding='utf-8') as f:
         label_dict = json.load(f)
@@ -234,7 +236,7 @@ def loading_label_dict(dataset_root):
 ############################################################
 # self defined functions to process v7labs annotation data
 ############################################################
-def parse_v7labs_json_file(json_path, label_dict):
+def _parse_v7labs_json_file(json_path, label_dict):
     output = pd.DataFrame(columns=['cls', 'x', 'y'])
     with open(json_path) as f:
         jsonfile = json.load(f)
@@ -253,6 +255,17 @@ def parse_v7labs_json_file(json_path, label_dict):
                 output.loc[len(output)] = {"x": x, "y": y, "cls": label_id}
 
     return output
+
+def _parse_labelme_json_file(json_path, label_dict):
+    pass
+
+def parse_label_json_file(json_path, label_dict, tool):
+    if tool == 'v7labs':
+        return _parse_v7labs_json_file(json_path, label_dict)
+    elif tool == 'labelme':
+        return _parse_labelme_json_file(json_path, label_dict)
+    else:
+        raise KeyError(f"Only v7labs and labelme produced json are supported, not [{tool}]")
 
 def generate_patches(img_size, patch_size, overlap_ratio=0):
     """The function to crop images to patch for training data
@@ -282,7 +295,7 @@ def generate_patches(img_size, patch_size, overlap_ratio=0):
         The dataframe after parse json file, columns = [cls, x, y] in raw images
     patch_size : int
         The width/height of each patch on raw images pixels
-    overlap_ratio : int, optional
+    overlap_ratio : float, optional
         the buffer area width/patch width inside the patch, by default 0
     trimming_size : int, optional
         the final output size, by default 256
@@ -337,8 +350,8 @@ def generate_patches_with_labels(img_np, patches, label_df, trimming_size=256):
         # for patches with annotations
         img_cropped = img_np[start_h:end_h, start_w:end_w]
 
-        recorded_points.x -= start_w
-        recorded_points.y -= start_h
+        recorded_points.loc[:, 'x'] = recorded_points.loc[:, 'x'] - start_w
+        recorded_points.loc[:, 'y'] = recorded_points.loc[:, 'y'] - start_h
 
         patch_size = end_w - start_w
 
@@ -346,8 +359,8 @@ def generate_patches_with_labels(img_np, patches, label_df, trimming_size=256):
 
         if ratio != 1:
             img_cropped = cv2.resize(img_cropped, (trimming_size, trimming_size))
-            recorded_points.x *= ratio
-            recorded_points.y *= ratio
+            recorded_points.loc[:, 'x'] = (recorded_points.loc[:, 'x'] * ratio).astype(int)
+            recorded_points.loc[:, 'y'] = (recorded_points.loc[:, 'y'] * ratio).astype(int)
 
         output_patches.append( {'imarray': img_cropped, 'label': recorded_points, 'patch_on_raw': p} )
 
@@ -369,8 +382,139 @@ def save_one_output_patch(output_patch_dict, image_stem, image_suffix, image_sav
     image_path = os.path.join(image_save_folder, image_name)
     label_path = os.path.join(label_save_folder, label_name)
 
-    cv2.imwrite(image_path, imarray)
+    Image.fromarray(imarray).save(image_path)
 
     with open(label_path, "w") as f:
         for row, label in label_df.iterrows():
             f.write(f"{int(label.cls)} {int(label.x)} {int(label.y)}\n")
+
+
+def convert_folder_to_dataset(
+    img_folder, label_folder, kind, label_dict, 
+    anno_tool, dataset_out_folder,
+    patch_size, overlap_ratio, trimming_size
+):
+    assert kind in ['train', 'valid', 'test'], "kind must be one of 'train', 'valid', 'test'"
+
+    img_folder = Path(img_folder)
+    label_folder = Path(label_folder)
+
+    img_files = _listdir_all_images(img_folder)
+    label_files = list(label_folder.glob("*.json"))
+
+    img_files, label_files = _match_image_and_label(img_files, label_files)
+
+    dataset_out_folder = Path(dataset_out_folder)
+    dataset_out_folder.mkdir(parents=True, exist_ok=True)
+
+    image_save_folder = dataset_out_folder / 'images' / kind
+    label_save_folder = dataset_out_folder / 'labels' / kind
+
+    image_save_folder.mkdir(parents=True, exist_ok=True)
+    label_save_folder.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n-------- {kind} ----------")
+
+    for img_file, json_file in tqdm(zip(img_files, label_files), total=len(img_files), desc="Processing images"):
+
+        img_path = Path(img_file)
+
+        label_df = parse_label_json_file(json_file, label_dict, tool=anno_tool)
+        img_np = cv2.cvtColor(cv2.imread(img_file), cv2.COLOR_BGR2RGB)
+        patch_list = generate_patches(img_np.shape, patch_size=patch_size, overlap_ratio=overlap_ratio)
+
+        output_patch_list = generate_patches_with_labels(img_np, patch_list, label_df, trimming_size=trimming_size)
+
+        for out_patch in output_patch_list:
+            # p = out_patch['patch_on_raw']
+            # print(f"   -> [{str(img_path.stem)}_x{p[0]}_y{p[1]}_s{patch_size}] "
+            #       f"with final size ({trimming_size}, {trimming_size}) and [{len(out_patch['label'])}] annotations")
+
+            save_one_output_patch(
+                out_patch, image_stem=img_path.stem, image_suffix=img_path.suffix,
+                image_save_folder=image_save_folder,
+                label_save_folder=label_save_folder,
+            )
+
+def get_dataset_convert_arguments():
+    """
+    Parse all the arguments provided from the CLI.
+
+    Returns:
+        A list of parsed arguments.
+    """
+    parser = argparse.ArgumentParser(description="Object Counting Framework")
+
+    # a threshold during evaluation for counting and visualization
+    parser.add_argument('--anno_tool', default="v7labs", choices=["v7labs", "labelme"], help="the tool used to annotation points and json files")
+    parser.add_argument('--dataset_folder', required=True, help="The dataset root folder for recieving converted outputs")
+    parser.add_argument('--train_image_folder', required=True, help="the folder contains images for generating training data")
+    parser.add_argument('--train_label_folder', required=True, help="the folder contains labels for generating training data")
+    parser.add_argument('--valid_image_folder', required=True, help="the folder contains images for generating validation data")
+    parser.add_argument('--valid_label_folder', required=True, help="the folder contains labels for generating validation data")
+    parser.add_argument('--test_image_folder', required=False, default=None, help="the folder contains images for generating testing data")
+    parser.add_argument('--test_label_folder', required=False, default=None, help="the folder contains labels for generating testing data")
+    parser.add_argument('--classes_json', required=True, type=str,  help='The classes.json file record id-class pairs')
+    parser.add_argument('--patch_size', default=256*3, type=int, help="The patch size in pixels on raw images")
+    parser.add_argument('--overlap_ratio', default=0.0, type=float, help="the buffer area width/patch width inside the patch, by default 0.0 no overlap")
+    parser.add_argument('--patch_save_size', default=None, type=int, help="The saved patch image size, by default the same as patch size")
+
+    return parser.parse_known_args()[0] #if known else parser.parse_args()
+    
+if __name__ == '__main__':
+    import sys
+    sys.path.insert(0, '../')
+
+    from gcp2pnet import utils
+
+    args = get_dataset_convert_arguments()
+    utils.print_args(args, title="Dataset Convertor")
+
+    label_dict, class_n = loading_label_dict( args.classes_json) 
+
+    dataset_folder = Path(args.dataset_folder)
+    dataset_folder.mkdir(parents=True, exist_ok=True)
+    if not (dataset_folder / 'classes.json').exists():
+        shutil.copy(args.classes_json, dataset_folder / 'classes.json')
+
+    if args.patch_save_size is None:
+        trimming_size = args.patch_size
+    else:
+        trimming_size = args.patch_save_size
+
+    convert_folder_to_dataset(
+        img_folder=args.train_image_folder, 
+        label_folder=args.train_label_folder,
+        kind='train', 
+        label_dict=label_dict,
+        anno_tool=args.anno_tool, 
+        dataset_out_folder=args.dataset_folder,
+        patch_size=args.patch_size,
+        overlap_ratio=args.overlap_ratio,
+        trimming_size=trimming_size
+    )
+
+    convert_folder_to_dataset(
+        img_folder=args.valid_image_folder, 
+        label_folder=args.valid_label_folder,
+        kind='valid', 
+        label_dict=label_dict,
+        anno_tool=args.anno_tool, 
+        dataset_out_folder=args.dataset_folder,
+        patch_size=args.patch_size,
+        overlap_ratio=args.overlap_ratio,
+        trimming_size=trimming_size
+    )
+
+    if args.test_image_folder is not None:
+        convert_folder_to_dataset(
+            img_folder=args.test_image_folder, 
+            label_folder=args.test_label_folder,
+            kind='test', 
+            label_dict=label_dict,
+            anno_tool=args.anno_tool, 
+            dataset_out_folder=args.dataset_folder,
+            patch_size=args.patch_size,
+            overlap_ratio=args.overlap_ratio,
+            trimming_size=trimming_size
+        )
