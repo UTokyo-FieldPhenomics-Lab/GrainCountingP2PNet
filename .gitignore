@@ -1,6 +1,6 @@
 __pycache__
 /.venv
-/data/demo_dataset
+/data/demo_dataset*
 /data/*.zip
 /data/inference
 /data/demo_raw
