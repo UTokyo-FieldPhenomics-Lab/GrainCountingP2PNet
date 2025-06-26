@@ -10,8 +10,8 @@ import matplotlib.patches as patches
 
 from gcp2pnet.datasets import (
     SHHADataset, loading_dataset, loading_label_dict,
-    _parse_v7labs_json_file, generate_patches,
-    generate_patches_with_labels, 
+    _parse_v7labs_json_file, _parse_labelme_json_file,
+    generate_patches, generate_patches_with_labels, 
     save_one_output_patch,
 )
 from gcp2pnet.utils import fix_random_seed
@@ -49,6 +49,15 @@ def test_parse_v7labs_json():
     assert output.cls[0] == 2
     assert output.x[0] == 4240
     assert output.y[0] == 6439
+
+def test_parse_labelme_json():
+
+    output = _parse_labelme_json_file("tests/20220207_17_Y_a.json", gt_label_dict)
+
+    assert len(output) == 24
+    assert output.cls[0] == 2
+    assert output.x[0] == 2461.9166666666665
+    assert output.y[0] == 2745.8333333333335
 
 def test_generate_patches():
 

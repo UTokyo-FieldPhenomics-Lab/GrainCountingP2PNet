@@ -1,0 +1,345 @@
+{
+  "version": "5.8.2",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2461.9166666666665,
+          2745.8333333333335
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2632.75,
+          2870.8333333333335
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2757.75,
+          2991.666666666667
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2882.75,
+          3154.166666666667
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          2957.75,
+          3312.5
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3157.75,
+          3470.8333333333335
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3195.25,
+          3662.5
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3295.25,
+          3812.5
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3374.4166666666665,
+          3925.0
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2741.777777777778,
+          3593.333333333333
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          2832.888888888889,
+          3764.4444444444443
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2959.5555555555557,
+          3971.111111111111
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          2864.0,
+          2444.4444444444443
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          3186.222222222222,
+          2786.6666666666665
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          3299.5555555555557,
+          3028.8888888888887
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          3506.222222222222,
+          3160.0
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          3484.0,
+          2640.0
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "詰まっているけど浮く",
+      "points": [
+        [
+          3619.5555555555557,
+          3064.4444444444443
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3352.8888888888887,
+          2468.8888888888887
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3319.5555555555557,
+          2742.222222222222
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3004.0,
+          2662.222222222222
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3555.1111111111113,
+          3291.111111111111
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3572.8888888888887,
+          3426.6666666666665
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "平べったくて浮く",
+      "points": [
+        [
+          3510.6666666666665,
+          2853.3333333333335
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    }
+  ],
+  "imagePath": "../data/demo_raw/inference_images/20220207_17_Y_a.JPG",
+  "imageHeight": 9600,
+  "imageWidth": 7728
+}

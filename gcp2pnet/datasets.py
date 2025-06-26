@@ -259,7 +259,26 @@ def _parse_v7labs_json_file(json_path, label_dict):
     return output
 
 def _parse_labelme_json_file(json_path, label_dict):
-    pass
+    output = pd.DataFrame(columns=['cls', 'x', 'y'], dtype=float)
+
+    with open(json_path) as f:
+        jsonfile = json.load(f)
+
+        shapes = jsonfile["shapes"]
+
+        for shape in shapes:
+            label = shape["label"]
+            points = shape["points"][0]
+            x = float(points[0])
+            y = float(points[1])
+
+            if label in label_dict:
+                label_id = label_dict[label]
+                output.loc[len(output)] = {"x": x, "y": y, "cls": label_id}
+            else:
+                print(f"[Warning] label {label} not found in label_dict")
+
+    return output
 
 def parse_label_json_file(json_path, label_dict, tool):
     if tool == 'v7labs':
