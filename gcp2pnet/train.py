@@ -221,7 +221,8 @@ def main(args):
                     torch.save({
                         'model': model_without_ddp.state_dict(),
                     }, best_model_file)
-                    print(f"=== updated best model ===\n   -> {best_model_file}")
+                    print(f":: updated best model with mse {np.min(mse)}")
+                    print(f"   -> {best_model_file} ")
 
             mae.append(result[0])
             mse.append(result[1])
