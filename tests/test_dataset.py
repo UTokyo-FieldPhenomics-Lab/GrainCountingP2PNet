@@ -26,8 +26,8 @@ gt_label_dict = {'Fill': 1, '平べったいけど沈む': 1, '平べったく�
 def test_demo_dataset_loading():
     train_set, valid_set = loading_dataset( dataset_dir )
 
-    assert len(train_set) == 2719
-    assert len(valid_set) == 1332
+    assert len(train_set) == 3051
+    assert len(valid_set) == 1338
 
     assert train_set[0][0].shape == torch.Size([1, 3, 256, 256])
     assert train_set[0][1][0]['image_path'].stem == train_set[0][1][0]['label_path'].stem

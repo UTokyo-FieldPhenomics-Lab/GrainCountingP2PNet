@@ -3,7 +3,8 @@ __pycache__
 /data/demo_dataset*
 /data/*.zip
 /data/inference
-/data/demo_raw
+/data/demo_raw/*images
+/data/demo_raw/*labels
 /runs
 **/outputs
 *.pth

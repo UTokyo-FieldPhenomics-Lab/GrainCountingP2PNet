@@ -236,9 +236,9 @@ Please unzip to `data/demo_raw` folder and then execute the following command:
     --train_label_folder "data/demo_raw/training_labels" \
     --valid_image_folder "data/demo_raw/evaluation_images" \
     --valid_label_folder "data/demo_raw/evaluation_labels" \
-    --classes_json "data/classes.json" \
+    --classes_json "data/demo_raw/classes.json" \
     --patch_size 768 \
-    --overlap_ratio 0.2 \
+    --overlap_ratio 0.0 \
     --patch_save_size 256
 ```
 
