@@ -242,7 +242,10 @@ Please unzip to `data/demo_raw` folder and then execute the following command:
     --patch_save_size 256
 ```
 
-It will convert the raw images and labels to standard `data/demo_dataset` folder ready for training.
+It will convert the raw images and labels to standard `data/demo_dataset` folder for training. 
+
+> [!NOTE]  
+> The previous API should work for most of the application case. However, to achieve better performance in the paper, we used the variate patch size. Because the raw images in the demo_dataset is collected by two apporaches with variate resolution (one width 2576 px, the other width is 7728 px), so we used the `convert2dataset.py` script to finish the conversion with variable patch size (256px and 768px, respectively).
 
 The sliced image patch has the file name format: `originame_x{...}_y{...}_s{...}.jpg`, `(x, y)` are the top left corner of patch on raw image, the `s` is the original patch size on raw image.
 
@@ -258,6 +261,7 @@ The converted label txt file has the following format: `class x.pix y.pix`, for 
 1 199.66666666666666 99.66666666666666
 1 240.0 44.666666666666664
 ```
+
 </details>
 
 
