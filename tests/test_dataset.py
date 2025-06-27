@@ -15,6 +15,9 @@ from gcp2pnet.datasets import (
     save_one_output_patch,
 )
 from gcp2pnet.utils import fix_random_seed
+from gcp2pnet.vis import (
+    draw_patch_individual, draw_patch_split_on_raw
+)
 
 dataset_dir = "data/demo_dataset"
 
@@ -126,6 +129,31 @@ def test_generate_patches_with_labels():
     plt.tight_layout()
     plt.savefig("tests/outputs/test_dataset_generate_patches_with_labels_preview.png")
     plt.close(fig)
+
+def test_generate_patches_with_labels_missing_debug():
+
+    test_json = "./data/demo_raw/training_labels/20221227_15_S.json"
+    test_img = "./data/demo_raw/training_images/20221227_15_S.JPG"
+
+    label_df = _parse_v7labs_json_file(test_json, gt_label_dict)
+    img_np = cv2.imread(test_img)
+    patch_list = generate_patches(img_np.shape, patch_size=256*3, overlap_ratio=0.0)
+
+    output_patch_list = generate_patches_with_labels(img_np, patch_list, label_df, trimming_size=256)
+
+    #########################
+    # drawing check figures
+    #########################
+    draw_patch_split_on_raw(
+        img_np, patch_list, label_df, color_dict, 
+        save_path=f"tests/outputs/{Path(test_json).stem}_split_on_raw"
+    )
+
+    draw_patch_individual(
+        img_np, output_patch_list, color_dict, 
+        save_path=f"tests/outputs/{Path(test_json).stem}_individual"
+    )
+
 
 def test_save_one_output_patch():
 
