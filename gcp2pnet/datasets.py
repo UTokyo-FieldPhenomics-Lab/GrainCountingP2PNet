@@ -12,7 +12,7 @@ import cv2
 import torch
 import numpy as np
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageOps
 from torch.utils.data import Dataset
 from tqdm import tqdm
 import torchvision.transforms as standard_transforms
@@ -112,10 +112,11 @@ class SHHADataset(Dataset):
     @staticmethod
     def load_image_data(img_path):
 
-        img = cv2.imread(img_path)
-
-        if not img is None:
-            img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        # img = cv2.imread(img_path)
+        # if not img is None:
+        #     img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        
+        img = ImageOps.exif_transpose(Image.open(img_path))
         
         return img
 
@@ -182,10 +183,22 @@ def _match_image_and_label(img_list, lbl_list):
     img_stems = {img.stem: img for img in img_list}
     lbl_stems = {lbl.stem: lbl for lbl in lbl_list}
 
+    not_in_label = []
     for stem in img_stems:
         if stem in lbl_stems:
             img_list_ordered.append(img_stems[stem])
             lbl_list_ordered.append(lbl_stems[stem])
+        else:
+            not_in_label.append(stem)
+
+    not_in_img = []
+    for stem in lbl_stems:
+        if stem not in img_stems:
+            not_in_img.append(stem)
+
+    if len(not_in_label) + len(not_in_img) > 0:
+        print("Not in Image: ", not_in_img)
+        print("Not in Label: ", not_in_label)
 
     return img_list_ordered, lbl_list_ordered
     
@@ -441,16 +454,13 @@ def convert_folder_to_dataset(
         img_path = Path(img_file)
 
         label_df = parse_label_json_file(json_file, label_dict, tool=anno_tool)
-        img_np = cv2.cvtColor(cv2.imread(img_file), cv2.COLOR_BGR2RGB)
+        # img_np = cv2.cvtColor(cv2.imread(img_file), cv2.COLOR_BGR2RGB)
+        img_np = np.array(ImageOps.exif_transpose(Image.open(img_file)))
         patch_list = generate_patches(img_np.shape, patch_size=patch_size, overlap_ratio=overlap_ratio)
 
         output_patch_list = generate_patches_with_labels(img_np, patch_list, label_df, trimming_size=trimming_size)
 
         for out_patch in output_patch_list:
-            # p = out_patch['patch_on_raw']
-            # print(f"   -> [{str(img_path.stem)}_x{p[0]}_y{p[1]}_s{patch_size}] "
-            #       f"with final size ({trimming_size}, {trimming_size}) and [{len(out_patch['label'])}] annotations")
-
             save_one_output_patch(
                 out_patch, image_stem=img_path.stem, image_suffix=img_path.suffix,
                 image_save_folder=image_save_folder,
@@ -499,9 +509,9 @@ def get_dataset_convert_arguments():
 
     
 if __name__ == '__main__':
+    import os
     import sys
-    sys.path.insert(0, '../')
-
+    sys.path.insert(0, os.getcwd())
     from gcp2pnet import utils
 
     args = get_dataset_convert_arguments()
