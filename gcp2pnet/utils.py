@@ -1,4 +1,6 @@
 import random
+import yaml
+from pathlib import Path
 
 import torch
 import numpy as np
@@ -26,6 +28,10 @@ def print_args(args, title="Training Arguments"):
     for arg in vars(args):
         print(f"{arg:>20}: {getattr(args, arg)}")
     print("="*120)
+
+def save_args_to_yaml(args, yaml_path):
+    with open(yaml_path, 'w', encoding="utf-8") as f:
+        yaml.dump({k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, f)
 
 def fix_random_seed(seed):
     """

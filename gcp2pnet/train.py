@@ -2,7 +2,6 @@ import argparse
 import datetime
 import os
 import time
-import yaml
 from pathlib import Path
 
 import warnings
@@ -119,10 +118,7 @@ def main(args):
 
     # create the logging file
     utils.print_args(args)
-    run_log_name =  run_output_dir / 'args.yaml'
-    with open(run_log_name, 'w', encoding="utf-8") as f:
-        yaml.dump({k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, f)
-
+    utils.save_args_to_yaml(args, yaml_path= run_output_dir / 'args.yaml')
     utils.fix_random_seed(args.seed)
 
     # get the P2PNet model

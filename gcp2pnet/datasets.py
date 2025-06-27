@@ -519,6 +519,8 @@ if __name__ == '__main__':
     else:
         trimming_size = args.patch_save_size
 
+    utils.save_args_to_yaml(args, dataset_folder / "generate_args.yaml")
+
     convert_folder_to_dataset(
         img_folder=args.train_image_folder, 
         label_folder=args.train_label_folder,
