@@ -306,9 +306,9 @@ def main(args, debug=False):
                             save_path=args.result_path)
 
 if __name__ == '__main__':
+    import os
     import sys
-    sys.path.insert(0, '../')
-
+    sys.path.insert(0, os.getcwd())
     from gcp2pnet import models, utils, datasets, misc, engine
 
     args = get_inf_arguments()
