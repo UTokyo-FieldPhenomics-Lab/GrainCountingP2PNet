@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+from pathlib import Path
 
 import torch
 import pytest
@@ -22,8 +23,8 @@ def test_get_inf_arguments():
     args = get_inf_arguments()
 
     assert args.seed == 42
-    assert args.weight_path == 'demo_best_mae.pth'
-    assert args.img_path == ''
+    assert args.weight_path == Path('demo_best_mae.pth')
+    assert args.img_path == Path('.')
 
 def test_load_model():
     args = get_inf_arguments()
@@ -39,7 +40,7 @@ def test_load_model():
     args.weight_path = "./demo_best_mae.pth"
     model = load_model(args)
 
-    assert model.num_classes == 3
+    assert model.num_classes == 2
 
 def test_load_image_to_tensor():
     args = get_inf_arguments()
@@ -93,8 +94,8 @@ def test_inference_raw_output(setup_inference):
     points = outputs_points[outputs_scores > args.threshold].detach().cpu().numpy()#.tolist()
     scores = outputs_scores[outputs_scores > args.threshold].detach().cpu().numpy()#.tolist()
 
-    assert points.shape == (78,2)
-    assert scores.shape == (78,)
+    assert points.shape == (75,2)
+    assert scores.shape == (75,)
 
     ################
     # packed func
@@ -102,8 +103,8 @@ def test_inference_raw_output(setup_inference):
 
     raw_results = apply_model(model, img_tensor, args.threshold)
 
-    assert raw_results[1]['points'].shape == (78, 2)
-    assert raw_results[1]['scores'].shape == (78,)
+    assert raw_results[1]['points'].shape == (75, 2)
+    assert raw_results[1]['scores'].shape == (75,)
 
     fig, ax = plt.subplots(1,1)
     ax.imshow(img_numpy)
@@ -118,19 +119,27 @@ def test_inference_post_processing(setup_inference):
     raw_results = apply_model(model, img_tensor, args.threshold)
 
     # sub function 
-    for key in raw_results.keys():
-        points_n, scores_n = postprocess_point_clusters_one_class(
-            raw_results[key]['points'],
-            raw_results[key]['scores']
-        )
 
-        assert points_n.shape == (6,2)
-        assert scores_n.shape == (6,)
+    points_n, scores_n = postprocess_point_clusters_one_class(
+        raw_results[1]['points'],
+        raw_results[1]['scores']
+    )
+
+    assert points_n.shape == (6,2)
+    assert scores_n.shape == (6,)
+
+    points_n, scores_n = postprocess_point_clusters_one_class(
+        raw_results[2]['points'],
+        raw_results[2]['scores']
+    )
+
+    assert points_n.shape == (7,2)
+    assert scores_n.shape == (7,)
 
     # merged function
     results_pd = postprocess_point_clusters(raw_results)
 
-    assert len(results_pd) == 12
+    assert len(results_pd) == 13
 
     ###############
     # draw figures

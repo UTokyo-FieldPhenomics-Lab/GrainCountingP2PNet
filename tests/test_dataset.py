@@ -50,8 +50,8 @@ def test_parse_v7labs_json():
 
     assert len(output) == 133
     assert output.cls[0] == 2
-    assert output.x[0] == 4240
-    assert output.y[0] == 6439
+    assert output.x[0] == 4240.9724
+    assert output.y[0] == 6439.5881
 
 def test_parse_labelme_json():
 
@@ -176,7 +176,7 @@ def test_save_one_output_patch():
 
     assert os.path.exists( out_txt_file )
 
-    expected_txt = "2 110.66666666666666 206.66666666666666\n"
+    expected_txt = "2 110.99189999999999 206.7013\n"
 
     with open(out_txt_file, 'r', encoding="utf-8") as f:
         assert expected_txt == f.readlines()[0]

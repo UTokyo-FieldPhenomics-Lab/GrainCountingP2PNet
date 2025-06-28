@@ -13,7 +13,7 @@ def test_get_train_arguements():
     assert args.lr_fpn == 1e-4
     assert args.epochs == 100
 
-    assert args.output_dir == './runs'
+    assert args.output_dir == Path('./runs')
 
 
 def test_main_one_epoch_run():
