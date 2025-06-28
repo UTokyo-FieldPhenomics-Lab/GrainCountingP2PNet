@@ -173,7 +173,7 @@ def evaluate_crowd_no_overlap(model, data_loader, device, class_n, threshold=0.5
 
             if points.shape[0]<10000 and points.shape[0] != 0:
                 cutoff = 500/points.shape[0]
-                if cutoff<20:
+                if cutoff < 20:
                     cutoff = 20
                 components = nx.connected_components(
                     nx.from_edgelist(

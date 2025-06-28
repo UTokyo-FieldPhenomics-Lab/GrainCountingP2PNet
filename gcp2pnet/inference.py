@@ -65,12 +65,15 @@ def load_model(args):
 
     utils.fix_random_seed(args.seed)
 
+    checkpoint = torch.load(args.weight_path, map_location=args.device)
+
     # get the P2PNet
-    model = models.P2PNet(args.row, args.line)
+    model = models.p2pnet.build_model(
+        args, num_classes=checkpoint['num_classes'], training=False
+    )
     model.to(args.device) # move to GPU
 
     # load trained model
-    checkpoint = torch.load(args.weight_path, map_location=args.device)
     model.load_state_dict(checkpoint['model'])
 
     # convert to eval mode
@@ -108,8 +111,6 @@ def load_image_to_tensor(img_path, device, trimming_size=256):
     return img_resize, img_tensor
 
 def apply_model(model, img_tensor, threshold):
-    class_n = model.num_classes - 1  # num_class = [0, 1, 2] -> [1, 2] are labels -> class_n = 2
-
     # run inference
     outputs = model(img_tensor)
 
@@ -117,7 +118,8 @@ def apply_model(model, img_tensor, threshold):
     outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)
 
     raw_results = {}
-    for class_i in range(1, class_n + 1):
+    # in our case, model.num_classes = 2, this aims to iter [1, 2]
+    for class_i in range(1, model.num_classes + 1):
         outputs_score = outputs_scores[:, :, class_i][0]
 
         points = outputs_points[outputs_score > threshold].detach().cpu().numpy()#.tolist()
@@ -177,19 +179,17 @@ def postprocess_point_clusters_one_class(points, scores):
 
 def postprocess_point_clusters(raw_dict):
     results = pd.DataFrame(columns=['x', 'y', 'score', 'cls'])
-    for key in raw_dict.keys():
+    for class_i in raw_dict.keys():
         points_n, scores_n = postprocess_point_clusters_one_class(
-            raw_dict[key]['points'],
-            raw_dict[key]['scores']
+            raw_dict[class_i]['points'],
+            raw_dict[class_i]['scores']
         )
-
-        class_n = [key] * len(points_n)
 
         tmp_df = pd.DataFrame({
             'x': points_n[:, 0],
             'y': points_n[:, 1],
             'score': scores_n,
-            'cls': class_n
+            'cls': class_i
         })
         results = pd.concat([results, tmp_df], ignore_index=True)
 

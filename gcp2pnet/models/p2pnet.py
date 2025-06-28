@@ -12,8 +12,6 @@ from .pyrimid import SODModel
 
 import numpy as np
 
-label_type_count = 2 + 1 #Please fill Class type count + 1
-
 # the network frmawork of the regression branch
 class RegressionModel(nn.Module):
     def __init__(self, num_features_in, num_anchor_points=4, feature_size=32):
@@ -144,22 +142,31 @@ class AnchorPoints(nn.Module):
 
 # the defenition of the P2PNet model
 class P2PNet(nn.Module):
-    def __init__(self, row=2, line=2):
+    def __init__(self, row=2, line=2, num_classes=2):
         super().__init__()
-        self.num_classes = label_type_count
-#        self.num_classes = label_type_count + 1
+        self.num_classes = num_classes
 
         # the number of all anchor points
         num_anchor_points = row * line
 
         self.regression = RegressionModel(num_features_in=8, num_anchor_points=num_anchor_points)
-        self.classification = ClassificationModel(num_features_in=8, \
-                                            num_classes=self.num_classes, \
-                                            num_anchor_points=num_anchor_points)
 
+        # e.g. input class [1, 2] -> 
+        # but need background id=0
+        # => num_class = num_class + 1 for this input
+        self.classification = ClassificationModel(num_features_in=8,
+                                                  num_classes=self.num_classes + 1,
+                                                  num_anchor_points=num_anchor_points)
+        
+        # original source code:
+        # >>> self.anchor_points = AnchorPoints(pyramid_levels=[3,], row=row, line=line)
+        # pyramid_levels=[3]表示使用特征金字塔的第3级（Level 3），对应下采样率为 2^3=8。
+        # 这意味着输入图像在该层级的特征图尺寸缩小为原图的 1/8（例如，输入800×600的图像，输出特征图尺寸为100×75）。
+        # GrainCouting论文中， pyramid_levels=[2] 表示使用特征 1/4， 输入256x256的图像，输出 128x128的feature
         self.anchor_points = AnchorPoints(pyramid_levels=[2,], row=row, line=line) # remember to change pyramid level when you change feature input
 
-        #self.fpn = Decoder_stg3(128, 256, 512, 512)
+        # original source code:
+        # >>> self.fpn = Decoder_stg3(128, 256, 512, 512)
         self.fpn = SODModel()
 
     def forward(self, samples: NestedTensor):
@@ -199,8 +206,10 @@ class SetCriterion_Crowd(nn.Module):
         self.eos_coef = eos_coef
         self.losses = losses
 
-        # empty_weight = torch.ones(self.num_classes + 1)  03/19バグ修正
-        empty_weight = torch.ones(self.num_classes)
+        # e.g. input class [1, 2] -> 
+        # but need background id=0
+        # => num_class = num_class + 1
+        empty_weight = torch.ones(self.num_classes + 1)  
         empty_weight[0] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
 
@@ -281,31 +290,21 @@ class SetCriterion_Crowd(nn.Module):
             losses.update(self.get_loss(loss, output1, targets, indices1, num_boxes))
 
         return losses
+    
+# build the P2PNet model
+# set training to 'True' during training
+def build_model(args, num_classes, training=False):
 
-# create the P2PNet model
-def build(args, training):
-    # treats persons as a single class
-    num_classes = label_type_count
-
-    model = P2PNet(args.row, args.line)
+    model = P2PNet(args.row, args.line, num_classes=num_classes)
     if not training:
         return model
 
     # weight_dict = {'loss_ce': 1, 'loss_points': args.point_loss_coef}  2023/03/19 バグ取り
-    weight_dict = {'loss_ce': label_type_count, 'loss_points': args.point_loss_coef}
+    weight_dict = {'loss_ce': num_classes, 'loss_points': args.point_loss_coef}
     losses = ['labels', 'points']
     matcher = build_matcher_crowd(args)
     criterion = SetCriterion_Crowd(num_classes, \
-                                matcher=matcher, weight_dict=weight_dict, \
-                                eos_coef=args.eos_coef, losses=losses)
+                                    matcher=matcher, weight_dict=weight_dict, \
+                                    eos_coef=args.eos_coef, losses=losses)
 
     return model, criterion
-
-
-# create the P2PNet model for execution
-def build_eval(args):
-    # treats persons as a single class
-    num_classes = label_type_count
-
-    model = P2PNet(args.row, args.line)
-    return model
