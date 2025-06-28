@@ -110,7 +110,7 @@ It will pop up a window to the results, to save result images directly to folder
     --result_path "./data/20220207_17_Y_a_v03_h02_results.png"
 ```
 
-if will print the DataFrame results in console and result image:
+It will print the DataFrame results in console and result image:
 
 ```
              x           y     score cls
@@ -292,9 +292,121 @@ TensorBoard 2.19.0 at http://localhost:8123/ (Press CTRL+C to quit)
 
 Then press `ctrl` + left click to open the `localhost:8123` to check in browser.
 
+## 4.Develop notes
+
+### 1) `num_classes` for multiple classes
+
+<details>
+
+<summary>Click to show details</summary>
+
+For the original P2PNet, it is only one class (human head) detection, in its code, it using `num_classes=1` to treats persons as a single class: [models/p2pnet.py: def build()](https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/5c91a81ca062b1c7fd3db3ad1c55b1c21f0a7455/models/p2pnet.py#L326-L340)
+
+```python
+def build(args, training):
+    # treats persons as a single class
+    num_classes = 1
+    ...
+    weight_dict = {'loss_ce': 1, 'loss_points': args.point_loss_coef}
+    losses = ['labels', 'points']
+    matcher = build_matcher_crowd(args)
+    criterion = SetCriterion_Crowd(num_classes, \
+                                matcher=matcher, weight_dict=weight_dict, \
+                                eos_coef=args.eos_coef, losses=losses)
+
+```
+
+Also, the `loss_ce` also equals to `num_classes`.
+
+But inside P2PNet, it has two classes: `{0: 'background', 1: 'person'}`, `self.num_classes` then changed to `2`: [models/p2pnet.py: class P2PNet()](https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/5c91a81ca062b1c7fd3db3ad1c55b1c21f0a7455/models/p2pnet.py#L194-L207)
+
+```python
+# the defenition of the P2PNet model
+class P2PNet(nn.Module):
+    def __init__(self, backbone, row=2, line=2):
+        super().__init__()
+        self.backbone = backbone
+        self.num_classes = 2
+        ...
+        self.classification = ClassificationModel(num_features_in=256, \
+                                            num_classes=self.num_classes, \
+                                            num_anchor_points=num_anchor_points)
+```
+
+For the `SetCriterion_crowd` class function, it also used `num_class+1` inside, [models/p2pnet.py: class SetCriterion_crowd().\_\_init\_\_()](https://github.com/TencentYoutuResearch/CrowdCounting-P2PNet/blob/5c91a81ca062b1c7fd3db3ad1c55b1c21f0a7455/models/p2pnet.py#L231-L248)
+
+```python
+class SetCriterion_Crowd(nn.Module):
+    def __init__(self, num_classes, matcher, weight_dict, eos_coef, losses):
+        super().__init__()
+        self.num_classes = num_classes
+        ...
+        empty_weight = torch.ones(self.num_classes + 1)
+        ...
+```
+
+---
+
+Thus, for multiple class modification, we modified pass `num_classes=2` to `P2PNet.num_classes`. But adding 1 inside the networks. In actual, the model has `[0, 1, 2]` three classes.
+
+```python
+# gcp2pnet/models/p2pnet.py
+def build_model(args, num_classes, training=False):
+    # >>> num_classes = 2
+    model = P2PNet(args.row, args.line, num_classes=num_classes)
+    ...
+    weight_dict = {'loss_ce': num_classes, 'loss_points': args.point_loss_coef}
+    ...
+    criterion = SetCriterion_Crowd(num_classes, # >>> num_classes = 2
+    ...
+
+class P2PNet(nn.Module):
+    def __init__(self, row=2, line=2, num_classes=2):
+        super().__init__()
+        self.num_classes = num_classes  # >>> num_classes=2
+        ...
+        self.classification = ClassificationModel(num_features_in=8,
+            num_classes=self.num_classes + 1, # >>> 2+1 as [0, 1, 2] three classes
+            num_anchor_points=num_anchor_points)
+
+class SetCriterion_Crowd(nn.Module):
+
+    def __init__(self, num_classes, matcher, weight_dict, eos_coef, losses):
+        super().__init__()
+        self.num_classes = num_classes # >>> 2
+        ...
+        # e.g. input class [1, 2] -> 
+        # but need background id=0
+        # => num_class = num_class + 1
+        empty_weight = torch.ones(self.num_classes + 1)   # >>> 2+1 as [0, 1, 2] three classes
+        empty_weight[0] = self.eos_coef
+        self.register_buffer('empty_weight', empty_weight)
+
+# gcp2pnet/inference.py
+def apply_model(model, img_tensor, threshold):
+    # run inference
+    outputs = model(img_tensor)
+
+    outputs_points = outputs['pred_points'][0]
+    outputs_scores = torch.nn.functional.softmax(outputs['pred_logits'], -1)
+
+    raw_results = {}
+    # in our case, model.num_classes = 2, this aims to iter [1, 2]
+    for class_i in range(1, model.num_classes + 1):  # >>> 2+1 as [0, 1, 2] three classes
+        outputs_score = outputs_scores[:, :, class_i][0]
+
+        points = outputs_points[outputs_score > threshold].detach().cpu().numpy()#.tolist()
+        scores = outputs_score [outputs_score > threshold].detach().cpu().numpy()#.tolist()
+
+        raw_results[class_i] = {'points': points, 'scores': scores}
+
+    return raw_results
+```
 
 
-## 4. Publications
+</details>
+
+## 5. Publications
 
 Please cite our paper if this project helps you:
 
