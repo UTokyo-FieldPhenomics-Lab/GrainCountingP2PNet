@@ -116,13 +116,21 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.device = device
 
-    # create the logging file
-    utils.print_args(args)
-    utils.save_args_to_yaml(args, yaml_path= run_output_dir / 'args.yaml')
     utils.fix_random_seed(args.seed)
 
+    # create the training and valiation set
+    train_set, val_set = datasets.loading_dataset( args.dataset_folder )
+    label_dict, class_n = datasets.loading_label_dict( args.dataset_folder / "classes.json") 
+
+    # create the sampler used during training
+    sampler_train = torch.utils.data.RandomSampler(train_set)
+    sampler_val = torch.utils.data.SequentialSampler(val_set)
+
+    batch_sampler_train = torch.utils.data.BatchSampler(
+        sampler_train, args.batch_size, drop_last=True)
+
     # get the P2PNet model
-    model, criterion = models.p2pnet.build(args, training=True)
+    model, criterion = models.p2pnet.build_model(args, num_classes=class_n, training=True)
 
     # move to GPU
     model.to(args.device)
@@ -144,17 +152,6 @@ def main(args):
     optimizer = torch.optim.Adam(param_dicts, lr=args.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    # create the training and valiation set
-    # train_set, val_set = loading_data(args.data_root)  # args_dataroot = training_data_root_dir
-    train_set, val_set = datasets.loading_dataset( args.dataset_folder )
-    label_dict, class_n = datasets.loading_label_dict( args.dataset_folder / "classes.json") 
-
-    # create the sampler used during training
-    sampler_train = torch.utils.data.RandomSampler(train_set)
-    sampler_val = torch.utils.data.SequentialSampler(val_set)
-
-    batch_sampler_train = torch.utils.data.BatchSampler(
-        sampler_train, args.batch_size, drop_last=True)
     
     # the dataloader for training
     data_loader_train = DataLoader(train_set, batch_sampler=batch_sampler_train,
@@ -173,18 +170,25 @@ def main(args):
     # resume the weights and training state if exists
     if args.resume:
         print("Resume previous checkpoints, continue training")
-        # checkpoint = torch.load(args.resume, map_location='cpu')
         checkpoint = torch.load(args.resume, weights_only=False, map_location=device)
         model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
-        if not args.eval and \
-            'optimizer' in checkpoint and \
-            'lr_scheduler' in checkpoint and \
-            'epoch' in checkpoint:
 
+        if 'optimizer' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer'])
+            print(":: Previous optimizer loaded")
+
+        if 'lr_scheduler' in checkpoint:
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+            print(":: Previous lr_scheduler loaded")
+        
+        if 'epoch' in checkpoint:
             args.start_epoch = checkpoint['epoch'] + 1
-            print(checkpoint['epoch'] + 1)
+            args.epochs += checkpoint['epoch'] + 1
+            print(f":: continue from epoch [{checkpoint['epoch'] + 1}]")
+
+    # create the logging file
+    utils.print_args(args)
+    utils.save_args_to_yaml(args, yaml_path= run_output_dir / 'args.yaml')
 
     #######################
     print("Start training")
@@ -204,25 +208,26 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
 
         # run evaluation
-        if epoch % args.eval_freq == 0:
+        if epoch % args.eval_freq == 0 or len(mse) == 0:  # resume without mae and mse
             t1 = time.time()
             result = engine.evaluate_crowd_no_overlap(model, data_loader_val, device, class_n, args.threshold)
             t2 = time.time()
 
-
             # save the best model since begining
-            if epoch > 0:
-                if np.min(mse) > result[1]:
+            if len(mse) > 0 and np.min(mse) > result[1]:
                 # if abs(np.min(mae) - result[0]) < 0.01:
-                    torch.save({
-                        'model': model_without_ddp.state_dict(),
-                    }, best_model_file)
-                    print(f":: updated best model with mse {np.min(mse)}")
-                    print(f"   -> {best_model_file} ")
+                torch.save({
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'epoch': epoch,
+                    'num_classes': class_n,
+                }, best_model_file)
+                print(f":: updated best model with mse {np.min(mse)}")
+                print(f"   -> {best_model_file} ")
 
             mae.append(result[0])
             mse.append(result[1])
-
             print("mae list:", np.asarray(mae))
             print("mse list:", np.asarray(mse))
 
@@ -237,6 +242,7 @@ def main(args):
                 writer.add_scalar('metric/mae', result[0], step)
                 writer.add_scalar('metric/mse', result[1], step)
                 step += 1
+
 
         t1 = time.time()
         stat = engine.train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
@@ -265,6 +271,10 @@ def main(args):
 
         torch.save({
             'model': model_without_ddp.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'lr_scheduler': lr_scheduler.state_dict(),
+            'epoch': epoch,
+            'num_classes': class_n,
         }, checkpoint_latest_path)
 
     # total time for training
