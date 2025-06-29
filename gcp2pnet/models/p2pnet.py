@@ -7,7 +7,7 @@ from ..misc import (NestedTensor, nested_tensor_from_tensor_list,
                        is_dist_avail_and_initialized)
 
 from .backbone import build_backbone
-from .matcher import build_matcher_crowd
+from .matcher import HungarianMatcher_Crowd
 from .pyrimid import SODModel
 
 import numpy as np
@@ -293,18 +293,16 @@ class SetCriterion_Crowd(nn.Module):
     
 # build the P2PNet model
 # set training to 'True' during training
-def build_model(args, num_classes, training=False):
-
+def build_model(args, num_classes):
     model = P2PNet(args.row, args.line, num_classes=num_classes)
-    if not training:
-        return model
+    return model
 
+def build_criterion(args, num_classes):
     # weight_dict = {'loss_ce': 1, 'loss_points': args.point_loss_coef}  2023/03/19 バグ取り
     weight_dict = {'loss_ce': num_classes, 'loss_points': args.point_loss_coef}
     losses = ['labels', 'points']
-    matcher = build_matcher_crowd(args)
+    matcher = HungarianMatcher_Crowd(cost_class=args.set_cost_class, cost_point=args.set_cost_point)
     criterion = SetCriterion_Crowd(num_classes, \
                                     matcher=matcher, weight_dict=weight_dict, \
                                     eos_coef=args.eos_coef, losses=losses)
-
-    return model, criterion
+    return criterion

@@ -80,6 +80,3 @@ class HungarianMatcher_Crowd(nn.Module):
         indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
 
         return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
-
-def build_matcher_crowd(args):
-    return HungarianMatcher_Crowd(cost_class=args.set_cost_class, cost_point=args.set_cost_point)
