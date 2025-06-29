@@ -246,7 +246,7 @@ def main(args):
 
 
         t1 = time.time()
-        stat = engine.train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm)
+        stat = engine.train_one_epoch(model, criterion, data_loader_train, optimizer, device, args.clip_max_norm)
 
         # record the training states after every epoch
         if writer is not None:
