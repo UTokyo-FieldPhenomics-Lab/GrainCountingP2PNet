@@ -87,22 +87,7 @@ class SHHADataset(Dataset):
 
         for i, _ in enumerate(point):  #03/21 debug
             target[i]['point'] = torch.Tensor(point[i])
-
-            if len(labels[0]) > 1:
-                target[i]['labels'] = torch.Tensor(labels[i].flatten()).long()
-            else:
-                target[i]['labels'] = torch.Tensor(labels[i]).long()
-
-            # image_id_1 = int(image_path.split('/')[-1].split('.')[0][5:7])
-            # image_id_1 = int(image_path.name[5:7])
-            # image_id_1 = torch.Tensor([image_id_1]).long()
-            
-            # image_id_2 = int(image_path.split('/')[-1].split('.')[0][5:7])
-            # image_id_2 = int(image_path.name[5:7])
-            # image_id_2 = torch.Tensor([image_id_2]).long()
-
-            # target[i]['image_id_1'] = image_id_1
-            # target[i]['image_id_2'] = image_id_2
+            target[i]['labels'] = torch.Tensor(labels[i].flatten()).long()
 
             target[i]['image_path'] = image_path
             target[i]['label_path'] = label_path

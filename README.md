@@ -271,13 +271,13 @@ The converted label txt file has the following format: `class x.pix y.pix`, for 
 ```bash
 > uv run -m gcp2pnet.train \
     --dataset_folder ./data/demo_dataset \
-    --batch_size 1 \
+    --batch_size 8 \
     --epochs 100 \
     --run_name demo_train \
     ...
 ```
 
-Note: due to multi-class, currently only batch_size=1 is supported.
+For RTX 4090 with 24GB memory, the `batch_size` can be set up to 64.
 
 After training, using the following command to check the results figure by tensorboard:
 

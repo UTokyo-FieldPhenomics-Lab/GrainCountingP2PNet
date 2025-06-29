@@ -41,3 +41,26 @@ def test_main_one_epoch_run():
     assert os.path.exists( f"{tests_out}/args.yaml")
     assert os.path.exists( f"{tests_out}/weights/latest.pth")
     assert os.path.exists( f"{tests_out}/weights/best_mae.pth")
+
+def test_main_one_epoch_run_batch_size_8():
+    args = get_train_arguments()
+    args.dataset_folder = Path("data/demo_dataset")
+    args.run_name = "tests_multi_batch_size"
+    args.epochs = 2
+    args.batch_size = 8
+    args.eval_freq = 1
+
+    tests_out = f"./runs/{args.run_name}"
+    if os.path.exists(tests_out):
+        shutil.rmtree(tests_out)
+
+    # Test if train.main() runs without errors
+    try:
+        main(args)
+
+    except Exception as e:
+        assert False, f"main() raised an exception: {e}"
+
+    assert os.path.exists( f"{tests_out}/args.yaml")
+    assert os.path.exists( f"{tests_out}/weights/latest.pth")
+    assert os.path.exists( f"{tests_out}/weights/best_mae.pth")
