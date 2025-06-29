@@ -292,6 +292,8 @@ TensorBoard 2.19.0 at http://localhost:8123/ (Press CTRL+C to quit)
 
 Then press `ctrl` + left click to open the `localhost:8123` to check in browser.
 
+![tensorboard_view](data/tensorboard_view.png)
+
 ## 4.Develop notes
 
 ### 1) `num_classes` for multiple classes
