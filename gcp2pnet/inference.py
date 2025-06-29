@@ -68,9 +68,7 @@ def load_model(args):
     checkpoint = torch.load(args.weight_path, map_location=args.device)
 
     # get the P2PNet
-    model = models.p2pnet.build_model(
-        args, num_classes=checkpoint['num_classes'], training=False
-    )
+    model = models.p2pnet.build_model(args, checkpoint['num_classes'])
     model.to(args.device) # move to GPU
 
     # load trained model

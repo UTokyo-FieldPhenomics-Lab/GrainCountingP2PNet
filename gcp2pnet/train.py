@@ -120,7 +120,7 @@ def main(args):
 
     # create the training and valiation set
     train_set, val_set = datasets.loading_dataset( args.dataset_folder )
-    label_dict, class_n = datasets.loading_label_dict( args.dataset_folder / "classes.json") 
+    label_dict, num_classes = datasets.loading_label_dict( args.dataset_folder / "classes.json") 
 
     # create the sampler used during training
     sampler_train = torch.utils.data.RandomSampler(train_set)
@@ -130,7 +130,8 @@ def main(args):
         sampler_train, args.batch_size, drop_last=True)
 
     # get the P2PNet model
-    model, criterion = models.p2pnet.build_model(args, num_classes=class_n, training=True)
+    model= models.p2pnet.build_model(args, num_classes)
+    criterion = models.p2pnet.build_criterion(args, num_classes)
 
     # move to GPU
     model.to(args.device)
@@ -210,7 +211,7 @@ def main(args):
         # run evaluation
         if epoch % args.eval_freq == 0 or len(mse) == 0:  # resume without mae and mse
             t1 = time.time()
-            result = engine.evaluate_crowd_no_overlap(model, data_loader_val, device, class_n, args.threshold)
+            result = engine.evaluate_crowd_no_overlap(model, data_loader_val, device, num_classes, args.threshold)
             t2 = time.time()
 
             # save the best model since begining
@@ -221,7 +222,7 @@ def main(args):
                     'optimizer': optimizer.state_dict(),
                     'lr_scheduler': lr_scheduler.state_dict(),
                     'epoch': epoch,
-                    'num_classes': class_n,
+                    'num_classes': num_classes,
                 }, best_model_file)
                 print(f":: updated best model with mse {np.min(mse)}")
                 print(f"   -> {best_model_file} ")
@@ -274,7 +275,7 @@ def main(args):
             'optimizer': optimizer.state_dict(),
             'lr_scheduler': lr_scheduler.state_dict(),
             'epoch': epoch,
-            'num_classes': class_n,
+            'num_classes': num_classes,
         }, checkpoint_latest_path)
 
     # total time for training
