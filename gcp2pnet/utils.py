@@ -31,7 +31,15 @@ def print_args(args, title="Training Arguments"):
 
 def save_args_to_yaml(args, yaml_path):
     with open(yaml_path, 'w', encoding="utf-8") as f:
-        yaml.dump({k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, f)
+        args_dict = {}
+        for k, v in vars(args).items():
+            if isinstance(v, Path):
+                args_dict[k] = str(v)
+            elif isinstance(v, torch.device):
+                args_dict[k] = 'cuda' if v.type == 'cuda' else str(v)
+            else:
+                args_dict[k] = v
+        yaml.dump(args_dict, f)
 
 def fix_random_seed(seed):
     """
