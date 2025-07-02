@@ -66,10 +66,10 @@ def get_train_arguments():
     parser.add_argument('--dataset_folder', default='./data/dataset',
                         help='path where the dataset is')#Change into rice data !!! -> chage default value
 
-    parser.add_argument('--output_dir', default="./runs",
+    parser.add_argument('--output_dir', default="./runs", type=str, 
                         help='the output folder contains checkpoints and logs')#Change into rice datawhere to save, empty for no saving')
-    parser.add_argument('--run_name', default='p2pnet')
-    
+    parser.add_argument('--run_name', default='p2pnet', type=str)
+
     parser.add_argument('--seed', default=42, type=int)#Change into rice data !!! -> chage default value
     parser.add_argument('--resume', default='', help='resume from checkpoint')#Change into rice data !!! -> chage default value
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',

@@ -20,7 +20,7 @@ from PIL import Image, ImageOps
 from scipy import spatial
 from tqdm import tqdm
 
-from . import models, utils
+from . import models, utils, datasets
 
 
 def get_inf_arguments():
@@ -35,9 +35,9 @@ def get_inf_arguments():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     ## the key arguements
-    parser.add_argument('--img_path', required=True, type=str, 
+    parser.add_argument('--img_path', default="", type=str, 
                         help="The path to image")
-    parser.add_argument('--weight_path', required=True, type=str, 
+    parser.add_argument('--weight_path', default="", type=str, 
                         help='The path to trained weight')
     parser.add_argument('--result_folder', default=None, 
                         help="The folder to save results on raw image")

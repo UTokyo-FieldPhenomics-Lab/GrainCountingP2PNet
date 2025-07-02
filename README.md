@@ -215,20 +215,21 @@ But recommend specify `--sliding_window` related arguements first, the provious 
 If you want to coding by yourself in python (e.g. for batch processing), you can use the following python API:
 
 ```python
+from pathlib import Path
 import gcp2pnet
 
 args = gcp2pnet.inference.get_inf_arguments()
-args.weight_path = "./demo_best_mae.pth"
-args.img_path = "./data/20220207_18_G_a.JPG"
-args.result_folder "data/" 
+args.weight_path = Path("./demo_best_mae.pth")
+args.img_path = Path("./data/20220207_18_G_a.JPG")
+args.result_folder = Path("data/")
 args.sliding_window = True
 args.window_size = 256 * 3
 args.overlap_ratio = 0.2
 args.merge_distance = 25 * 3
-args.patch_result_folder "data/patch/"
+args.patch_result_folder = Path("data/patch/")
 args.threshold = 0.5
 
-result_df = gcp2pnet.inference.main()
+result_df = gcp2pnet.inference.main(args)
 ```
 
 If you want further control the details, please refer the source code of `gcp2pnet.inference.main()` to get full control of outputs.
@@ -399,6 +400,28 @@ For RTX 4090 with 24GB memory, the `batch_size` can be set up to 64.
 | `--eval`                 | False         | bool   | Whether to run evaluation |
 | `--num_workers`          | 1             | int    | Number of data loading workers |
 | `--gpu_id`               | 0             | int    | GPU ID for training |
+
+---
+
+If you want to coding by yourself in python, you can use the following python API:
+
+```python
+from pathlib import Path
+import gcp2pnet
+
+args = gcp2pnet.train.get_train_arguments()
+args.dataset_folder = Path("./data/demo_dataset")
+args.batch_size = 8
+args.epochs = 100
+args.run_name = "demo_train"
+args.seed = 42
+
+gcp2pnet.train.main(args)
+```
+
+If you want further control the details, please refer the source code of `gcp2pnet.train.main()` to get full control of outputs.
+
+---
 
 After training, using the following command to check the results figure by tensorboard:
 
