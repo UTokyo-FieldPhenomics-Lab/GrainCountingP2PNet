@@ -223,6 +223,7 @@ def main(args):
                     'lr_scheduler': lr_scheduler.state_dict(),
                     'epoch': epoch,
                     'num_classes': num_classes,
+                    'imgsz': train_set.trimming_size
                 }, best_model_file)
                 print(f":: updated best model with mse {np.min(mse)}")
                 print(f"   -> {best_model_file} ")
@@ -276,6 +277,7 @@ def main(args):
             'lr_scheduler': lr_scheduler.state_dict(),
             'epoch': epoch,
             'num_classes': num_classes,
+            'imgsz': train_set.trimming_size
         }, checkpoint_latest_path)
 
     # total time for training
