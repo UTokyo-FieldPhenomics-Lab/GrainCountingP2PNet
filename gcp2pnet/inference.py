@@ -13,10 +13,12 @@ import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import patheffects
+from matplotlib.colors import ListedColormap
+from matplotlib.cm import ScalarMappable
 from adjustText import adjust_text
-
 from PIL import Image
 from scipy import spatial
+from tqdm import tqdm
 
 from . import models, utils
 
@@ -42,7 +44,12 @@ def get_inf_arguments():
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--weight_path', default="demo_best_mae.pth", help='resume from checkpoint')
     parser.add_argument('--img_path', default="", help="The path to image")
-    parser.add_argument('--result_path', default=None, help="The path to save result image")
+    parser.add_argument('--result_folder', default=None, help="The path to save result image")
+    parser.add_argument('--patch_result_folder', default=None, help="The folder to save patch result images")
+    parser.add_argument('--merge_distance', default=25, type=int, help="the pixel distance to merge points of postprocessing")
+    parser.add_argument('--sliding_window', default=False, type=bool, help="Whether crop high-resolution images to small patches for inference")
+    parser.add_argument('--window_size', default=256, type=int, help="The size of sliding window, default 256x256")
+    parser.add_argument('--overlap_ratio', default=0.2, type=float, help="Overlap ratio between patches")
     parser.add_argument('--num_workers', default=1, type=int)
     parser.add_argument('--gpu_id', default=0, type=int, help='the gpu used for training')
     parser.add_argument('--device', default=device, type=str, 
@@ -53,8 +60,17 @@ def get_inf_arguments():
     args.weight_path = Path(args.weight_path)
     args.img_path = Path(args.img_path)
 
-    if args.result_path is not None:
-        args.result_path = Path(args.result_path)
+    if args.result_folder is not None:
+        args.result_folder = Path(args.result_folder)
+
+        if not args.result_folder.exists():
+            args.result_folder.mkdir(parents=True, exist_ok=True)
+
+    if args.patch_result_folder is not None:
+        args.patch_result_folder = Path(args.patch_result_folder)
+
+        if not args.patch_result_folder.exists():
+            args.patch_result_folder.mkdir(parents=True, exist_ok=True)
 
     return args
 
@@ -77,28 +93,22 @@ def load_model(args):
     # convert to eval mode
     model.eval()
 
-    return model
+    return model, checkpoint
 
-def load_image_to_tensor(img_path, device, trimming_size=256):
-    # ensure image file exists
-    if not ( img_path and os.path.exists(img_path) ):
-        raise FileNotFoundError(f"Could not load image from [{img_path}]")
-
+def load_image_to_tensor(img_raw, device, model_train_img_size=256):
     # create the pre-processing transform
     transform = standard_transforms.Compose([
         standard_transforms.ToTensor(), 
         standard_transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    # load the images
-    img_raw = Image.open(img_path).convert('RGB')
-
     # round the size
     width, height = img_raw.size
-    new_width = width // trimming_size * trimming_size
-    new_height = height // trimming_size * trimming_size
+    new_width = new_height = model_train_img_size
 
     img_resize = img_raw.resize((new_width, new_height), Image.ANTIALIAS)
+
+    resize_ratio = ( new_width / width, new_height / height )
 
     # pre-proccessing
     img_trans = transform(img_resize)
@@ -106,7 +116,7 @@ def load_image_to_tensor(img_path, device, trimming_size=256):
     img_tensor = torch.Tensor(img_trans).unsqueeze(0)
     img_tensor = img_tensor.to(device)
 
-    return img_resize, img_tensor
+    return np.asarray(img_resize), img_tensor, resize_ratio
 
 def apply_model(model, img_tensor, threshold):
     # run inference
@@ -201,38 +211,46 @@ def postprocess_merge_by_distance(results_df, prox_distance=25):
 
     # Find all points within `distance` of each point
     to_keep = []
+    removed_indices = set()
     for idx, row in results_df.iterrows():
+        if idx in removed_indices:
+            continue
         neighbors = tree.query_ball_point([row['x'], row['y']], prox_distance)
+        neighbors = [n for n in neighbors if n not in removed_indices]
         neighbor_scores = results_df.iloc[neighbors]['score']
         highest_score_idx = neighbor_scores.idxmax()
+
         to_keep.append(highest_score_idx)
+        removed_indices.update(set(neighbors) - {highest_score_idx})
 
     # Deduplicate and keep only the highest-scoring points in each neighborhood
     filtered_df = results_df.loc[list(set(to_keep))].sort_index()
 
     return filtered_df
 
-def draw_result_figures(img_numpy, raw_results, after_point_clusters, after_merge_by_distance, 
-                        show=True, save_path=None,):
-    fig, ax = plt.subplots(1,3, figsize=(10,4))
+def draw_result_patch_figure(num_classes, img_numpy, raw_results, cluster_df, merged_df, 
+                             show=True, save_path=None,):
+    fig, ax = plt.subplots(1,3, figsize=(10,4), dpi=300)
 
-    c = {1: 'r', 2: 'b'}
+    if num_classes <= 9:
+        c = {i: plt.cm.Set1(i-1) for i in range(1, num_classes+1)}
+    else:
+        c = {plt.cm.hsv((i-1)/(num_classes-1)) for i in range(1, num_classes+1)}
 
     # raw outputs
     ax[0].imshow(img_numpy)
-    ax[0].scatter(*raw_results[1]['points'].T, c='r', s=1)
-    ax[0].scatter(*raw_results[2]['points'].T, c='b', s=1)
+    for i in raw_results.keys():
+        ax[0].scatter(*raw_results[i]['points'].T, c=c[i], s=1, alpha=0.5)
     ax[0].set_title("Raw detections")
 
     # clustered outputs
     ax[1].imshow(img_numpy)
-    class_color = [c[i] for i in after_point_clusters.cls]
-    ax[1].scatter(after_point_clusters.x, after_point_clusters.y, 
+    class_color = [c[i] for i in cluster_df.cls]
+    ax[1].scatter(cluster_df.x, cluster_df.y, 
                   c=class_color, s=15, marker='o', edgecolors='w')
-    
 
     texts = []
-    for x, y, score, cls in zip(after_point_clusters.x, after_point_clusters.y, after_point_clusters.score, after_point_clusters.cls):
+    for x, y, score, cls in zip(cluster_df.x, cluster_df.y, cluster_df.score, cluster_df.cls):
         texts.append(
             ax[1].text(x, y, f"{score:.2f}", ha='center', va='bottom', 
                     fontsize=10, color=c[cls], alpha=0.7,
@@ -246,17 +264,58 @@ def draw_result_figures(img_numpy, raw_results, after_point_clusters, after_merg
     # distance merged outputs
     ax[2].imshow(img_numpy)
 
-    c = {1: 'r', 2: 'b'}
-    class_color = [c[i] for i in after_merge_by_distance.cls]
-    ax[2].scatter(after_merge_by_distance.x, after_merge_by_distance.y, c=class_color, s=15, marker='o', edgecolors='w')
+    class_color = [c[i] for i in merged_df.cls]
+    ax[2].scatter(merged_df.x, merged_df.y, c=class_color, s=15, marker='o', edgecolors='w')
 
-    for x, y, score, cls in zip(after_merge_by_distance.x, after_merge_by_distance.y, after_merge_by_distance.score, after_merge_by_distance.cls):
+    for x, y, score, cls in zip(merged_df.x, merged_df.y, merged_df.score, merged_df.cls):
         ax[2].text(x, y-5, f"{score:.2f}", ha='center', va='bottom', 
                 fontsize=10, color=c[cls], alpha=0.7,
                 path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
         
     ax[2].set_title("Merged by distance")
 
+    # add colorbar at bottom
+    cbar_ax = fig.add_axes([0.1, 0.05, 0.8, 0.04])  # [left, bottom, width, height]
+    cmap = ListedColormap( [plt.cm.Set1(i-1) for i in raw_results.keys()] )
+    cb = plt.colorbar(mappable=ScalarMappable(cmap=cmap), cax=cbar_ax, orientation='horizontal')
+    ticks = [( j + 0.5 ) / num_classes for j in range(0, num_classes)]
+    labels = [j+1 for j in range(0, num_classes )]
+    cb.ax.get_xaxis().set_ticks(ticks, labels)
+    cb.ax.get_yaxis().set_ticks([])
+    cb.ax.tick_params(bottom=False, labelsize=8)
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
+    
+    if save_path is not None:
+        plt.savefig(save_path)
+    
+    plt.close(fig) 
+
+def draw_results_raw_image(num_classes, figsize, img_numpy, merged_df, 
+                           show=True, save_path=None):
+    
+    fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=300)
+    ax.imshow(img_numpy)
+
+    if num_classes <= 9:
+        c = {i: plt.cm.Set1(i-1) for i in range(1, num_classes+1)}
+    else:
+        c = {plt.cm.hsv((i-1)/(num_classes-1)) for i in range(1, num_classes+1)}
+
+    class_color = [c[i] for i in merged_df.cls]
+    ax.scatter(merged_df.x, merged_df.y, c=class_color, s=15, marker='o', edgecolors='w')
+
+    for x, y, score, cls in zip(merged_df.x, merged_df.y, merged_df.score, merged_df.cls):
+        ax.text(x, y-5, f"{score:.2f}", ha='center', va='bottom', 
+            fontsize=5, color=c[cls], alpha=0.7,
+            path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
+        
+    ax.invert_xaxis()
+    ax.invert_yaxis()
+    plt.axis('off')
     plt.tight_layout()
 
     if show:
@@ -276,32 +335,98 @@ def draw_result_figures(img_numpy, raw_results, after_point_clusters, after_merg
         cv2.destroyAllWindows()
     
     if save_path is not None:
-        plt.savefig(save_path)
-        plt.close(fig) 
+        plt.savefig(
+            save_path, 
+            bbox_inches='tight',
+            pad_inches=0)
 
+    plt.close(fig) 
 
-def main(args, debug=False):
+def main(args, return_result=False):
     os.environ["CUDA_VISIBLE_DEVICES"] = '{}'.format(args.gpu_id)
+
+    model, checkpoints = load_model(args)
+
+    # ensure image file exists
+    if not ( args.img_path and os.path.exists(args.img_path) ):
+        raise FileNotFoundError(f"Could not load image from [{args.img_path}]")
+    # load the images
+    img_raw = Image.open(args.img_path).convert('RGB')
+
+    # judge if need sliding window to produce results
+    width, height = img_raw.size
+    img_oversize = max(width, height) > checkpoints['imgsz'] * 2
+    # ask user if using sliding window when image oversize than model trained img size
+    if img_oversize and not args.sliding_window:
+        answer = input(f"[Warning] The input image size ({width}, {height}) exceeds model training size ({checkpoints['imgsz']}, {checkpoints['imgsz']}).\n"
+                       f"          This may cause misdetection for small objects.\n"
+                       f"          Continue inferencing by default resizing [Y] or using slidling window [N]? (Y/N)")
+        
+        if answer in ['N', 'n']:
+            args.sliding_window = True
 
     utils.print_args(args, title="Inference Arguements")
 
-    model = load_model(args)
+    if args.sliding_window:
+        patches= datasets.generate_patches((width, height), args.window_size, args.overlap_ratio)
+        img_list = []
+        for p in patches:
+            # p -> (start_w, start_h, end_w, end_h)
+            # img_raw_crop -> left, top, right, bottom)
+            img_list.append( img_raw.crop( p ) )
+    else:
+        img_list = [img_raw]
+        patches = [(0,0, width, height)]
 
-    img_numpy, img_tensor = load_image_to_tensor(args.img_path, args.device)
-    raw_results = apply_model(model, img_tensor, args.threshold)
+    raw_results_final = {}
+    merged_df_concat = pd.DataFrame(columns=['x', 'y', 'score', 'cls'])
+    for img, patch in tqdm(zip(img_list, patches), total=len(patches), desc=f"Processing patches"):
 
-    clustered_df = postprocess_point_clusters(raw_results)
-    merged_df = postprocess_merge_by_distance(clustered_df, prox_distance=25)
+        patch_ndarray, patch_tensor, resize_ratio = load_image_to_tensor(img, args.device, checkpoints['imgsz'] )
+        patch_raw_results = apply_model(model, patch_tensor, args.threshold)
 
+        patch_clustered_df = postprocess_point_clusters(patch_raw_results)
+
+        # draw patch results
+        if args.patch_result_folder is not None and len(patch_clustered_df) > 0:
+
+
+            patch_merged_df = postprocess_merge_by_distance(patch_clustered_df, prox_distance=args.merge_distance)
+
+            save_name = Path(args.patch_result_folder) / f"{Path(args.img_path).stem}_x{patch[0]}_y{patch[1]}_s{args.window_size}.png"
+
+            draw_result_patch_figure(
+                checkpoints['num_classes'], patch_ndarray, 
+                patch_raw_results, patch_clustered_df, patch_merged_df,
+                show=False, save_path=save_name)
+
+        if len(patch_clustered_df) > 0:
+            patch_clustered_df['x'] = patch_clustered_df['x'] / resize_ratio[0] + patch[0]
+            patch_clustered_df['y'] = patch_clustered_df['y'] / resize_ratio[1] + patch[1]
+
+            merged_df_concat = pd.concat([merged_df_concat, patch_clustered_df]).reset_index(drop=True)
+
+    # prox_distance need to resize according to window_size?
+    merged_df = postprocess_merge_by_distance(merged_df_concat, prox_distance=args.merge_distance)
     print(merged_df)
 
-    if args.result_path is None:
+    figsize = (width // args.window_size, height // args.window_size)
+    if args.result_folder is None:
         # not saving to path, show images instead
-        draw_result_figures(img_numpy, raw_results, clustered_df, merged_df, show=True)
+        draw_results_raw_image(
+            checkpoints['num_classes'], figsize, 
+            img_raw, merged_df, show=True)
 
     else:
-        draw_result_figures(img_numpy, raw_results, clustered_df, merged_df, show=False, 
-                            save_path=args.result_path)
+        draw_results_raw_image(
+            checkpoints['num_classes'], figsize, 
+            img_raw, merged_df, show=False, save_path=args.result_folder / f"{args.img_path.stem}_result.png")
+
+    utils.save_args_to_yaml(args, yaml_path=args.result_folder / f"{args.img_path.stem}_result.yaml")
+
+    if return_result:
+        return merged_df
+        
 
 if __name__ == '__main__':
     import os
