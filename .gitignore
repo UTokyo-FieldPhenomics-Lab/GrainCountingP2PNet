@@ -4,6 +4,7 @@ __pycache__
 /data/*.zip
 /data/inference
 /data/*_result*
+!/data/*_md*
 /data/demo_raw/*images
 /data/demo_raw/*labels
 /data/patch/*

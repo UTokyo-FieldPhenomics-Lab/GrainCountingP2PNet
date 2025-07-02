@@ -16,7 +16,7 @@ from matplotlib import patheffects
 from matplotlib.colors import ListedColormap
 from matplotlib.cm import ScalarMappable
 from adjustText import adjust_text
-from PIL import Image
+from PIL import Image, ImageOps
 from scipy import spatial
 from tqdm import tqdm
 
@@ -34,24 +34,36 @@ def get_inf_arguments():
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # a threshold during evaluation for counting and visualization
+    ## the key arguements
+    parser.add_argument('--img_path', required=True, type=str, 
+                        help="The path to image")
+    parser.add_argument('--weight_path', required=True, type=str, 
+                        help='The path to trained weight')
+    parser.add_argument('--result_folder', default=None, 
+                        help="The folder to save results on raw image")
+    parser.add_argument('--patch_result_folder', default=None, 
+                        help="The folder to save intermediate results on each patch image")
+    ## the inference arguement
+    parser.add_argument('--seed', default=42, type=int, help="Global random seed")
     parser.add_argument('--threshold', default=0.3, type=float,
-                        help="threshold in evalluation: evaluate_crowd_no_overlap")
+                        help="threshold to heatmap")
+    parser.add_argument('--merge_distance', default=25, type=int, 
+                        help="the pixel distance to merge points during intermediate processing")
+    ## sliding window method
+    parser.add_argument('--sliding_window', default=False, type=bool, 
+                        help="Whether crop high-resolution images to small patches for inference")
+    parser.add_argument('--window_size', default=256, type=int, 
+                        help="The size of sliding window, default 256x256")
+    parser.add_argument('--overlap_ratio', default=0.2, type=float, 
+                        help="Overlap ratio between patches")
+    ## model related args (not recommend to change)
     parser.add_argument('--row', default=2, type=int,
                         help="row number of anchor points")
     parser.add_argument('--line', default=2, type=int,
                         help="line number of anchor points")
-    parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--weight_path', default="demo_best_mae.pth", help='resume from checkpoint')
-    parser.add_argument('--img_path', default="", help="The path to image")
-    parser.add_argument('--result_folder', default=None, help="The path to save result image")
-    parser.add_argument('--patch_result_folder', default=None, help="The folder to save patch result images")
-    parser.add_argument('--merge_distance', default=25, type=int, help="the pixel distance to merge points of postprocessing")
-    parser.add_argument('--sliding_window', default=False, type=bool, help="Whether crop high-resolution images to small patches for inference")
-    parser.add_argument('--window_size', default=256, type=int, help="The size of sliding window, default 256x256")
-    parser.add_argument('--overlap_ratio', default=0.2, type=float, help="Overlap ratio between patches")
     parser.add_argument('--num_workers', default=1, type=int)
-    parser.add_argument('--gpu_id', default=0, type=int, help='the gpu used for training')
+    parser.add_argument('--gpu_id', default=0, type=int, 
+                        help='the gpu used for training')
     parser.add_argument('--device', default=device, type=str, 
                         help="the torch running device, 'cpu' or 'cuda'")
 
@@ -278,11 +290,13 @@ def draw_result_patch_figure(num_classes, img_numpy, raw_results, cluster_df, me
     cbar_ax = fig.add_axes([0.1, 0.05, 0.8, 0.04])  # [left, bottom, width, height]
     cmap = ListedColormap( [plt.cm.Set1(i-1) for i in raw_results.keys()] )
     cb = plt.colorbar(mappable=ScalarMappable(cmap=cmap), cax=cbar_ax, orientation='horizontal')
-    ticks = [( j + 0.5 ) / num_classes for j in range(0, num_classes)]
     labels = [j+1 for j in range(0, num_classes )]
-    cb.ax.get_xaxis().set_ticks(ticks, labels)
+    for j, lbl in enumerate(labels):
+        cb.ax.text( (j + 0.5) / num_classes, 0.45, lbl, ha='center', va='center', color='white')
+    cb.ax.get_xaxis().set_ticks([])
     cb.ax.get_yaxis().set_ticks([])
     cb.ax.tick_params(bottom=False, labelsize=8)
+    cb.ax.set_xlabel('class color, numbers over points are scores of detection')
 
     plt.tight_layout()
 
@@ -296,6 +310,8 @@ def draw_result_patch_figure(num_classes, img_numpy, raw_results, cluster_df, me
 
 def draw_results_raw_image(num_classes, figsize, img_numpy, merged_df, 
                            show=True, save_path=None):
+    
+    figsize = ( max(figsize[0], 3), max(figsize[1], 3) )
     
     fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=300)
     ax.imshow(img_numpy)
@@ -313,9 +329,7 @@ def draw_results_raw_image(num_classes, figsize, img_numpy, merged_df,
             fontsize=5, color=c[cls], alpha=0.7,
             path_effects=[patheffects.withStroke(linewidth=2, foreground='white')])
         
-    ax.invert_xaxis()
-    ax.invert_yaxis()
-    plt.axis('off')
+    ax.axis('off')
     plt.tight_layout()
 
     if show:
@@ -335,10 +349,7 @@ def draw_results_raw_image(num_classes, figsize, img_numpy, merged_df,
         cv2.destroyAllWindows()
     
     if save_path is not None:
-        plt.savefig(
-            save_path, 
-            bbox_inches='tight',
-            pad_inches=0)
+        plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
 
     plt.close(fig) 
 
@@ -351,7 +362,7 @@ def main(args, return_result=False):
     if not ( args.img_path and os.path.exists(args.img_path) ):
         raise FileNotFoundError(f"Could not load image from [{args.img_path}]")
     # load the images
-    img_raw = Image.open(args.img_path).convert('RGB')
+    img_raw = ImageOps.exif_transpose(Image.open(args.img_path).convert('RGB'))
 
     # judge if need sliding window to produce results
     width, height = img_raw.size
@@ -408,7 +419,7 @@ def main(args, return_result=False):
 
     # prox_distance need to resize according to window_size?
     merged_df = postprocess_merge_by_distance(merged_df_concat, prox_distance=args.merge_distance)
-    print(merged_df)
+    print(merged_df.reset_index(drop=True))
 
     figsize = (width // args.window_size, height // args.window_size)
     if args.result_folder is None:
@@ -425,7 +436,7 @@ def main(args, return_result=False):
     utils.save_args_to_yaml(args, yaml_path=args.result_folder / f"{args.img_path.stem}_result.yaml")
 
     if return_result:
-        return merged_df
+        return merged_df.reset_index(drop=True)
         
 
 if __name__ == '__main__':

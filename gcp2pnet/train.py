@@ -27,13 +27,16 @@ def get_train_arguments():
     # constant
     parser.add_argument('--lr', default=1e-3, type=float, # originall set 1e-3 and can be reduced at later training stage
                         help="learning rate for background model") 
-    parser.add_argument('--lr_fpn', default=1e-4, type=float, help="learning rate for detection head")
+    parser.add_argument('--lr_fpn', default=1e-4, type=float, 
+                        help="learning rate for detection head")
     parser.add_argument('--batch_size', default=1, type=int)
 
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=100, type=int)
-    parser.add_argument('--lr_drop', default=2000000, type=int)
-    parser.add_argument('--clip_max_norm', default=0.1, type=float, help='gradient clipping max norm')
+    parser.add_argument('--lr_drop', default=2000000, type=int, 
+                        help="learning rate drop")
+    parser.add_argument('--clip_max_norm', default=0.1, type=float, 
+                        help='gradient clipping max norm')
 
     # Model parameters
     parser.add_argument('--frozen_weights', type=str, default=None, 
@@ -66,11 +69,7 @@ def get_train_arguments():
     parser.add_argument('--output_dir', default="./runs",
                         help='the output folder contains checkpoints and logs')#Change into rice datawhere to save, empty for no saving')
     parser.add_argument('--run_name', default='p2pnet')
-    # parser.add_argument('--checkpoints_dir', default = program_files_root_dir + 'CrowdCounting-P2PNet/MultiLevelPyramidFeature_01',
-    #                     help='path where to save checkpoints, empty for no saving') #ckpt_5n was not bad, default 2 X 2#Change into rice data !!! -> chage default value
-    # parser.add_argument('--tensorboard_dir', default=program_files_root_dir + 'CrowdCounting-P2PNet/Grain_runs',
-    #                     help='path where to save, empty for no saving')#Change into rice data !!! -> chage default value
-
+    
     parser.add_argument('--seed', default=42, type=int)#Change into rice data !!! -> chage default value
     parser.add_argument('--resume', default='', help='resume from checkpoint')#Change into rice data !!! -> chage default value
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',

@@ -9,11 +9,28 @@ EasyP2PNet is an **easy-to-use** and **multiple class** [P2PNet](https://github.
 * Provides a user-friendly API for training and inferencing.
 * Ensures fast and reproducible dependency installation using [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
+**Table of Contents**
+
+- [EasyP2PNet: A Multiple-Class P2PNet Based on RGB Images](#easyp2pnet-a-multiple-class-p2pnet-based-on-rgb-images)
+  - [1. Setup Environment](#0-setup-environment)
+    - [1.1 Drivers and hardward](#11-drivers-and-hardward)
+    - [1.2 Virtual env and dependencies](#12-virtual-env-and-dependencies)
+  - [2. Inference](#2-inference)
+    - [2.1 Inference one patch image (256x256)](#21-inference-one-patch-image-256x256)
+    - [2.2 Inference whole raw image](#22-inference-whole-raw-image)
+    - [2.3 Python API for coding](#23-python-api-for-coding)
+  - [3. Dataset](#3-dataset)
+    - [3.1 Download demo datasets](#31-download-demo-datasets)
+    - [3.2 Prepare your own datasets](#32-prepare-your-own-datasets)
+  - [4. Training](#4-training)
+  - [5. Develop notes](#5develop-notes)
+  - [6. Publications](#6-publications)
+
 Here is our related paper for dual-class grain counting: [GrainCountingP2PNet: An RGB image-based phenotyping system for assessing spikelet fertility in rice panicles (under view)]()
 
-## 0. Setup Environment
+## 1. Setup Environment
 
-### Drivers and hardward
+### 1.1 Drivers and hardward
 
 This project recommand **minimum** cuda version `12.4`, lower versions may work but have not been tested.
 
@@ -28,7 +45,7 @@ Tue Jun 24 12:01:39 2025
 
 It has been examined on **Arch-Linux** x86 machine with Nvidia RTX 4090 and cuda `12.8`; also **Windows 11** with cuda `12.9` and Nvidia RTX 3060Ti.
 
-### Virtual env and dependencies
+### 1.2 Virtual env and dependencies
 
 To ensure reproducibility, we recommend using [uv](https://docs.astral.sh/uv/getting-started/installation/) to create and manage Python virtual environments. Please verify that the `uv` command is available in your command line:
 
@@ -89,74 +106,136 @@ Type "help", "copyright", "credits" or "license" for more information.
 </details>
 
 
-## 1. Inference 
+## 2. Inference 
 
-As a quick testing for this model, please download pretrained model `demo_best_mae.pth` and demo image for from [releases](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.1). 
+As a quick testing for this model, please download pretrained model `demo_best_mae.pth` and demo image for from [releases](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.3). 
 
-After downloading putting it to the root of this github repo and using the following command to execute the inference:
+After downloading putting it to the root of this github repo and using the `uv run -m gcp2pnet.inference --args` command to execute the inference, the detailed arguments help is listed here or checked by `uv run -m gcp2pnet.inference --help`:
+
+**Arguments for inference:**
+
+*Note: bold arguments are required parameters.*
+
+| Argument              | Default Value | Type  | Description |
+|-----------------------|---------------|-------|-------------|
+| **`--img_path`**      | Required      | str   | The path to image |
+| **`--weight_path`**   | Required      | str   | resume from checkpoint |
+| `--result_folder`     | None          | str   | The folder to save results on raw image |
+| `--patch_result_folder` | None       | str   | The folder to save intermediate results on each patch image |
+| `--seed`              | 42            | int   | Global random seed |
+| `--threshold`         | 0.3           | float | threshold to heatmap |
+| `--merge_distance`    | 25            | int   | the pixel distance to merge points during intermediate processing |
+| `--sliding_window`    | False         | bool  | Whether crop high-resolution images to small patches for inference |
+| `--window_size`       | 256           | int   | The size of sliding window, default 256x256 |
+| `--overlap_ratio`     | 0.2           | float | Overlap ratio between patches |
+| `--row`               | 2             | int   | row number of anchor points |
+| `--line`              | 2             | int   | line number of anchor points |
+| `--num_workers`       | 1             | int   | number of workers |
+| `--gpu_id`            | 0             | int   | the gpu used for training |
+| `--device`            | device        | str   | the torch running device, 'cpu' or 'cuda' |
+
+### 2.1 Inference one patch image (256x256)
+
+The official demo model is trained by 256x256 patch images, you can directly inference the sliced patch by:
 
 ```bash
 > uv run -m gcp2pnet.inference \
-    --img_path "path/to/demo_image.jpg" \
-    --weight_path "demo_best_mae.pth"
+    --img_path "./data/20220207_17_Y_a_v03_h02.JPG" \
+    --weight_path "./demo_best_mae.pth" \
+    --result_folder "./data/" \
+    --patch_result_folder "./data/" \
 ```
 
-It will pop up a window to the results, to save result images directly to folder, please use `--result_path`:
+It will gives the following DataFrame outputs in console:
+
+```
+            x           y     score cls
+0  108.878756   75.222892  0.588416   1
+1  188.493221  149.772534  0.499952   1
+2  222.360333  239.170328  0.554243   1
+3   22.765125   76.594569  0.504329   2
+4   78.569320   92.489747  0.474745   2
+5  125.916349  133.613068  0.492151   2
+6  178.559971  177.599326  0.482725   2
+7  252.538132  191.777252  0.382432   2
+8  145.957041  226.342230  0.508119   2
+```
+
+And results preview image. If `--result_folder` is not specified, instead of saving result images, it will pop up a window to preview the results.
+
+| Original Image | Result Image |
+|------------------------|----------------------|
+| <img src="data/20220207_17_Y_a_v03_h02.JPG" width="400"> | <img src="data/20220207_17_Y_a_v03_h02_result.png" width="410"> |
+
+if you specify `--patch_result_folder` parameter, it will also save the intermediate results of each patch:
+
+![intermediate](data/20220207_17_Y_a_v03_h02_x0_y0_s256.png)
+
+### 2.2 Inference whole raw image 
+
+For most of the case, we want to inference directly on raw images with much larger size than model training size. In this case, to ensure better performance, we need to slice the raw image into several small sliding windows (256x256) and then merge the results. 
+
+To do this, you first need to specify `--sliding_window` to `True`, then specify other optional parameters to control the sliding window and merging process.
+
+Take our image as example:
 
 ```bash
 > uv run -m gcp2pnet.inference \
-    --img_path "./data/20220207_17_Y_a_v03_h02.JPG"\
+    --img_path "data/20220207_18_G_a.JPG" \
     --weight_path "demo_best_mae.pth" \
-    --result_path "./data/20220207_17_Y_a_v03_h02_results.png"
+    --result_folder "data/" \
+    --sliding_window True \
+    --window_size 768 \
+    --patch_result_folder "data/patch/" \
+    --threshold 0.5 \
+    --overlap_ratio 0.2 \
+    --merge_distance 75
 ```
 
-It will print the DataFrame results in console and result image:
+Please notice: for `--window_size`, we specify **3 times** (256\*3=768) larger than model training size (256x256) to accelerate the inference process. In corresponding, the default `--merge_distance` is also tribled from 25 to 25\***3=75**.
 
+Here is the result (shrinked image size for faster webview, the source file is 14.5 MB):
+
+| Original Image | Result Image |
+|------------------------|----------------------|
+| <img src="data/20220207_18_G_a_md.png" width="400"> | <img src="data/20220207_18_G_a_result_md.png" width="403"> |
+
+Even though forget the argument `--sliding_window`, the API will also compare the input image size with model size, if exceeds the model size, it will ask you to choose whether use sliding window or not:
+
+```bash
+[Warning] The input image size (7728, 9228) exceeds model training size (256, 256).
+          This may cause misdetection for small objects.
+          Continue inferencing by default resizing [Y] or using slidling window [N]? (Y/N)
 ```
-             x           y     score cls
-0    17.917275   73.201589  0.651996   1
-1   110.389812   78.006449  0.751744   1
-4   143.182544  177.582699  0.670365   1
-5   224.996984  242.175739  0.670584   1
-6    75.902485   91.724290  0.612998   2
-8   129.165154  136.832257  0.591995   2
-9   190.516909  151.484091  0.590699   2
-10  176.682974  179.405544  0.666000   2
-11  145.889114  227.981217  0.646891   2
-```
 
-![](data/20220207_17_Y_a_v03_h02_result.png)
+But recommend specify `--sliding_window` related arguements first, the provious warning force to use default arguements for sliding window.
 
----
+### 2.3 Python API for coding
 
-Or if you want to coding by yourself in python (e.g. for batch processing):
+If you want to coding by yourself in python (e.g. for batch processing), you can use the following python API:
 
 ```python
 import gcp2pnet
 
 args = gcp2pnet.inference.get_inf_arguments()
-
 args.weight_path = "./demo_best_mae.pth"
-args.img_path = "./data/20220207_17_Y_a_v03_h02.JPG"
-args.result_path = "./data/20220207_17_Y_a_v03_h02_results.png"
+args.img_path = "./data/20220207_18_G_a.JPG"
+args.result_folder "data/" 
+args.sliding_window = True
+args.window_size = 256 * 3
+args.overlap_ratio = 0.2
+args.merge_distance = 25 * 3
+args.patch_result_folder "data/patch/"
+args.threshold = 0.5
 
-# start inferencing
-model = gcp2pnet.inference.load_model(args)
-img_numpy, img_tensor = gcp2pnet.inference.load_image_to_tensor(args.img_path, args.device)
-raw_results = gcp2pnet.inference.apply_model(model, img_tensor, args.threshold)
-clustered_df  = gcp2pnet.inference.postprocess_point_clusters(raw_results)
-# the final processed results in DataFrame
-merged_df = gcp2pnet.inference.postprocess_merge_by_distance(results_df, prox_distance=25)
-
-# draw results
-gcp2pnet.inference.draw_result_figures(
-    img_numpy, raw_results, clustered_df, merged_df,
-    show=False, save_path=args.result_path)
+result_df = gcp2pnet.inference.main()
 ```
 
-## 2. Dataset
+If you want further control the details, please refer the source code of `gcp2pnet.inference.main()` to get full control of outputs.
 
-### Download demo datasets
+## 3. Dataset
+
+### 3.1 Download demo datasets
 
 The organized demo dataset for training is available at [release/demo_dataset.zip](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.1)
 
@@ -182,11 +261,7 @@ data/demo_dataset/
 This dataset has already been converted and prepared for training directly.
 
 
-### Prepare your own datasets
-
-<details>
-
-<summary>Click to show details</summary>
+### 3.2 Prepare your own datasets
 
 To build your own dataset, you firstly need split your raw images to the following folder structure:
 
@@ -224,7 +299,7 @@ You also need to prepare a json file to record the class label with unique integ
 }
 ```
 
-You can check the demo raw data as examples at [release/demo_raw.zip](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.1)
+You can check the demo raw data as examples at [release/demo_raw.zip](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.3)
 
 Please unzip to `data/demo_raw` folder and then execute the following command:
 
@@ -244,8 +319,27 @@ Please unzip to `data/demo_raw` folder and then execute the following command:
 
 It will convert the raw images and labels to standard `data/demo_dataset` folder for training. 
 
+The details about arguements can be checked by `uv run -m gcp2pnet.datasets --help`:
+
+| Argument                  | Default Value | Type   | Description |
+|---------------------------|---------------|--------|-------------|
+| **`--dataset_folder`**    | Required      | str    | The dataset root folder for receiving converted outputs |
+| **`--train_image_folder`** | Required    | str    | The folder contains images for generating training data |
+| **`--train_label_folder`** | Required    | str    | The folder contains labels for generating training data |
+| **`--valid_image_folder`** | Required    | str    | The folder contains images for generating validation data |
+| **`--valid_label_folder`** | Required    | str    | The folder contains labels for generating validation data |
+| **`--classes_json`**     | Required      | str    | The classes.json file record id-class pairs |
+| `--anno_tool`             | "v7labs"      | str    | The tool used to annotation points and json files (choices: ["v7labs", "labelme"]) |
+| `--test_image_folder`     | None          | str    | The folder contains images for generating testing data |
+| `--test_label_folder`     | None          | str    | The folder contains labels for generating testing data |
+| `--patch_size`            | 768 (256*3)   | int    | The patch size in pixels on raw images |
+| `--overlap_ratio`         | 0.0           | float  | The buffer area width/patch width inside the patch (0.0 = no overlap) |
+| `--patch_save_size`       | None          | int    | The saved patch image size (default: same as patch size) |
+
+*Note: bold arguments are required parameters.*
+
 > [!NOTE]  
-> The previous API should work for most of the application case. However, to achieve better performance in the paper, we used the variate patch size. Because the raw images in the demo_dataset is collected by two apporaches with variate resolution (one width 2576 px, the other width is 7728 px), so we used the `convert2dataset.py` script to finish the conversion with variable patch size (256px and 768px, respectively).
+> The previous API should work for most of the application case. However, to achieve better performance in the paper, we used the variate patch size. Because the raw images in the demo_dataset is collected by two apporaches with variate resolution (one width 2576 px, the other width is 7728 px), so we used the `data/demo_raw/convert2dataset.py` script to finish the conversion with variable patch size (256px and 768px, respectively).
 
 The sliced image patch has the file name format: `originame_x{...}_y{...}_s{...}.jpg`, `(x, y)` are the top left corner of patch on raw image, the `s` is the original patch size on raw image.
 
@@ -262,11 +356,8 @@ The converted label txt file has the following format: `class x.pix y.pix`, for 
 1 240.0 44.666666666666664
 ```
 
-</details>
 
-
-
-## 3. Training 
+## 4. Training 
 
 ```bash
 > uv run -m gcp2pnet.train \
@@ -278,6 +369,36 @@ The converted label txt file has the following format: `class x.pix y.pix`, for 
 ```
 
 For RTX 4090 with 24GB memory, the `batch_size` can be set up to 64.
+
+**Detailed Parameters:**
+
+| Argument                  | Default Value | Type   | Description |
+|---------------------------|---------------|--------|-------------|
+| **`--dataset_folder`**    | Required      | str | Path to dataset |
+| **`--batch_size`**        | 1             | int    | Batch size |
+| **`--epochs`**            | 100           | int    | Number of training epochs |
+| **`--output_dir`**        | './runs'      | str    | Output folder for checkpoints/logs |
+| **`--run_name`**          | 'p2pnet'      | str    | Name for the run |
+| `--resume`                | ''            | str    | Path to checkpoint to resume from |
+| `--start_epoch`           | 0             | int    | Starting epoch |
+| `--eval_freq`             | 5             | int    | Evaluation frequency (in epochs) |
+| `--lr`                    | 1e-3          | float  | Learning rate for background model |
+| `--lr_fpn`                | 1e-4          | float  | Learning rate for detection head |
+| `--weight_decay`          | 1e-4          | float  | Weight decay |
+| `--lr_drop`               | 2000000       | int    | Step for learning rate drop |
+| `--clip_max_norm`         | 0.1           | float  | Gradient clipping max norm |
+| `--frozen_weights`        | None          | str    | Path to pretrained model (only trains mask head if set) |
+| `--set_cost_class`        | 0.5           | float  | Class coefficient in matching cost (Hungarian strategy) |
+| `--set_cost_point`        | 0.5           | float  | L1 point coefficient in matching cost |
+| `--point_loss_coef`       | 0.02          | float  | Point loss coefficient |
+| `--eos_coef`             | 0.01          | float  | Relative classification weight of no-object class |
+| `--threshold`             | 0.5           | float  | Threshold for evaluation (evaluate_crowd_no_overlap) |
+| `--row`                   | 2             | int    | Row number of anchor points |
+| `--line`                  | 2             | int    | Line number of anchor points |
+| `--seed`                 | 42            | int    | Random seed |
+| `--eval`                 | False         | bool   | Whether to run evaluation |
+| `--num_workers`          | 1             | int    | Number of data loading workers |
+| `--gpu_id`               | 0             | int    | GPU ID for training |
 
 After training, using the following command to check the results figure by tensorboard:
 
@@ -294,9 +415,9 @@ Then press `ctrl` + left click to open the `localhost:8123` to check in browser.
 
 ![tensorboard_view](data/tensorboard_view.png)
 
-## 4.Develop notes
+## 5. Develop notes
 
-### 1) `num_classes` for multiple classes
+### 5.1 `num_classes` for multiple classes
 
 <details>
 
@@ -408,7 +529,7 @@ def apply_model(model, img_tensor, threshold):
 
 </details>
 
-## 5. Publications
+## 6. Publications
 
 Please cite our paper if this project helps you:
 
