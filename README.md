@@ -108,7 +108,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 ## 2. Inference 
 
-As a quick testing for this model, please download pretrained model `demo_best_mae.pth` and demo image for from [releases](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.3). 
+As a quick testing for this model, please download pretrained model `demo_best_mae.pth`(trained by batch size 32, epochs 1000, and random seed 42) and demo image for from [releases](https://github.com/UTokyo-FieldPhenomics-Lab/GrainCountingP2PNet/releases/tag/v0.0.3). 
 
 After downloading putting it to the root of this github repo and using the `uv run -m gcp2pnet.inference --args` command to execute the inference, the detailed arguments help is listed here or checked by `uv run -m gcp2pnet.inference --help`:
 
