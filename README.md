@@ -559,3 +559,12 @@ Please cite our paper if this project helps you:
 ```bib
 Under review
 ```
+
+## License
+
+- **Dataset**: Licensed under the Creative Commons
+  Attribution 4.0 International (CC BY 4.0).
+- **Source Code**: Licensed under the MIT License.
+
+See [DATA_LICENSE.txt](DATA_LICENSE.txt) and
+[LICENSE](LICENSE) for details.
